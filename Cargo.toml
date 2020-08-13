@@ -6,4 +6,6 @@ edition = "2018"
 
 [dependencies]
 once_cell = "1.4.0"
-loom = { version = "0.3.5", optional = true }
+
+[target.'cfg(loom)'.dependencies]
+loom = "0.3.5"

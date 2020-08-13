@@ -126,3 +126,43 @@ impl<T: Send + Sync> Drop for ThreadLocal<T> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::ThreadLocal;
+    use crate::shim::sync::atomic::{AtomicUsize, Ordering};
+
+    #[cfg(not(loom))]
+    #[test]
+    fn create_insert_store_single_thread() {
+        let thread_local = ThreadLocal::new();
+        let x = thread_local.get(|id| AtomicUsize::new(id as usize));
+        x.store(1, Ordering::SeqCst);
+    }
+
+    #[cfg(loom)]
+    #[test]
+    fn create_insert_store_multi_thread() {
+        use crate::shim::{sync::Arc, thread};
+        use super::thread_id;
+
+        loom::model(|| {
+            let thread_local = Arc::new(ThreadLocal::new());
+            let mut threads = Vec::new();
+
+            for x in 0..32 {
+                let thread_local = Arc::clone(&thread_local);
+
+                threads.push(thread::spawn(move || {
+                    let atomic_stored_id = thread_local.get(|id| AtomicUsize::new(id as usize));
+                    let stored_id = atomic_stored_id.load(Ordering::SeqCst);
+                    assert_eq!(stored_id, thread_id::get() as usize);
+                }));
+            }
+
+            for thread in threads {
+                thread.join();
+            }
+        });
+    }
+}

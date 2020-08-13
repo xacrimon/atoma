@@ -150,7 +150,7 @@ mod tests {
             let thread_local = Arc::new(ThreadLocal::new());
             let mut threads = Vec::new();
 
-            for x in 0..32 {
+            for _ in 0..32 {
                 let thread_local = Arc::clone(&thread_local);
 
                 threads.push(thread::spawn(move || {
@@ -161,7 +161,7 @@ mod tests {
             }
 
             for thread in threads {
-                thread.join();
+                thread.join().unwrap();
             }
         });
     }

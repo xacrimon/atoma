@@ -26,11 +26,11 @@ impl<T: Ord> PriorityQueue<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::PriorityQueue;
-
     #[cfg(not(loom))]
     #[test]
     fn pop_order() {
+        use super::PriorityQueue;
+
         let mut queue = PriorityQueue::new();
         queue.push(7);
         queue.push(9);

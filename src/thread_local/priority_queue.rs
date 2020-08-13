@@ -24,6 +24,7 @@ impl<T: Ord> PriorityQueue<T> {
     }
 }
 
+#[cfg(not(feature = "loom"))]
 #[cfg(test)]
 mod tests {
     use super::PriorityQueue;

@@ -59,4 +59,4 @@ jobs:
       - name: test
         run: |
           cross test --target ${{ matrix.target }}
-          RUSTFLAGS="--features loom" cross test --target ${{ matrix.target }}
+          RUSTFLAGS="--features loom" cross test --features loom --target ${{ matrix.target }}

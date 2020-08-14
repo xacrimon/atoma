@@ -2,7 +2,7 @@ mod priority_queue;
 mod table;
 mod thread_id;
 
-use crate::shim::sync::atomic::{AtomicPtr, Ordering};
+use std::sync::atomic::{AtomicPtr, Ordering};
 use table::Table;
 
 /// A wrapper that keeps different instances of something per thread.
@@ -129,10 +129,16 @@ impl<T: Send + Sync> Drop for ThreadLocal<T> {
 
 #[cfg(test)]
 mod tests {
+    use super::thread_id;
     use super::ThreadLocal;
-    use crate::shim::sync::atomic::{AtomicUsize, Ordering};
+    use std::{
+        sync::{
+            atomic::{AtomicUsize, Ordering},
+            Arc,
+        },
+        thread,
+    };
 
-    #[cfg(not(loom))]
     #[test]
     fn create_insert_store_single_thread() {
         let thread_local = ThreadLocal::new();
@@ -140,12 +146,8 @@ mod tests {
         x.store(1, Ordering::SeqCst);
     }
 
-    #[cfg(not(loom))]
     #[test]
     fn create_insert_store_multi_thread() {
-        use super::thread_id;
-        use crate::shim::{sync::Arc, thread};
-
         let thread_local = Arc::new(ThreadLocal::new());
         let mut threads = Vec::new();
 

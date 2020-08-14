@@ -4,8 +4,8 @@
 //! instead of hash tables for storing thread-local data.
 
 use super::priority_queue::PriorityQueue;
-use crate::shim::sync::Mutex;
 use once_cell::sync::Lazy;
+use std::sync::Mutex;
 
 /// This structure allocates ids.
 /// It is compose of a `limit` integer and a list of free ids lesser than `limit`.

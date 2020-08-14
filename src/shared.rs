@@ -58,11 +58,11 @@ impl<'shield, V: 'shield, T: Tag> Shared<'shield, V, T> {
 
     pub fn tag(&self) -> T {
         let bits = read_tag::<T>(self.data);
-        Tag::from_bits(bits)
+        Tag::deserialize(bits)
     }
 
     pub fn with_tag(&self, tag: T) -> Self {
-        let bits = tag.into_bits();
+        let bits = tag.serialize();
         let data = set_tag::<T>(self.data, bits);
         Self::from_data(data)
     }

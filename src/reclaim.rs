@@ -1,10 +1,8 @@
-pub trait Reclaimer {
-    type AtomicAdapter;
-    type ShieldAdapter;
+pub trait Reclaimer<M: ReclaimableManager> {
     type ShieldState;
     type RetireParameter;
 
-    fn destroy_shield(&self, state: &mut Self::ShieldState);
+    fn drop_shield(&self, state: &mut Self::ShieldState);
     fn retire(&self, state: &Self::ShieldState, param: Self::RetireParameter);
 }
 

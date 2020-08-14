@@ -25,6 +25,6 @@ where
 
 impl<'a, R: Reclaimer> Drop for Shield<'a, R> {
     fn drop(&mut self) {
-        self.reclaimer.destroy_shield(&mut self.state);
+        self.reclaimer.drop_shield(&mut self.state);
     }
 }

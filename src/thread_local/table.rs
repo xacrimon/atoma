@@ -1,5 +1,8 @@
 use super::thread_id;
-use std::{ptr,mem,sync::atomic::{AtomicPtr, Ordering}};
+use std::{
+    mem, ptr,
+    sync::atomic::{AtomicPtr, Ordering},
+};
 
 /// A wait-free table mapping thread ids to pointers.
 /// Because we try to keep thread ids low and reuse them

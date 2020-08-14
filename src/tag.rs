@@ -28,6 +28,6 @@ pub fn set_tag<T: Tag>(mut data: usize, bits: GenericArray<bool, T::Size>) -> us
 pub trait Tag {
     type Size: ArrayLength<bool>;
 
-    fn from_bits(bits: GenericArray<bool, Self::Size>) -> Self;
-    fn into_bits(self) -> GenericArray<bool, Self::Size>;
+    fn deserialize(bits: GenericArray<bool, Self::Size>) -> Self;
+    fn serialize(self) -> GenericArray<bool, Self::Size>;
 }

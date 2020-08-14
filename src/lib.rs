@@ -13,8 +13,8 @@ mod thread_local;
 #[cfg(feature = "ebr")]
 mod ebr;
 
-pub use generic_array::typenum;
 pub use atomic::Atomic;
+pub use generic_array::typenum;
 pub use reclaim::{ReclaimableManager, Reclaimer};
 pub use shared::Shared;
 pub use shield::Shield;

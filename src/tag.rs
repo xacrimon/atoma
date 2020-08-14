@@ -1,4 +1,4 @@
-use generic_array::{ArrayLength, GenericArray, typenum::Unsigned};
+use generic_array::{typenum::Unsigned, ArrayLength, GenericArray};
 
 pub fn strip<T: Tag>(data: usize) -> usize {
     let mask: usize = usize::MAX >> <T::Size as Unsigned>::to_usize();
@@ -21,7 +21,7 @@ pub fn set_tag<T: Tag>(mut data: usize, bits: GenericArray<bool, T::Size>) -> us
         let value = if *bit { 1 } else { 0 };
         data = (data & !(1 << index)) | (value << index);
     });
-    
+
     data
 }
 

@@ -1,4 +1,4 @@
-use super::{Reclaimer, ReclaimableManager};
+use super::{ReclaimableManager, Reclaimer};
 
 pub struct Shield<'a, M: ReclaimableManager, R: Reclaimer<M>> {
     reclaimer: &'a R,

@@ -1,28 +1,33 @@
-pub const MIN_ALIGN: usize = 4;
-const STRIP_MASK: usize = usize::MAX >> 2;
+use generic_array::{ArrayLength, GenericArray, typenum::Unsigned};
 
-pub fn strip(data: usize) -> usize {
-    data & STRIP_MASK
+pub fn strip<T: Tag>(data: usize) -> usize {
+    let mask: usize = usize::MAX >> <T::Size as Unsigned>::to_usize();
+    data & mask
 }
 
-pub fn read_tag(data: usize) -> [bool; 2] {
-    fn read_bit(data: usize, index: usize) -> bool {
-        ((data >> index) & 1) == 1
-    }
+pub fn read_tag<T: Tag>(data: usize) -> GenericArray<bool, T::Size> {
+    let mut array = GenericArray::default();
 
-    [read_bit(data, 0), read_bit(data, 1)]
+    array
+        .iter_mut()
+        .enumerate()
+        .for_each(|(index, bit)| *bit = ((data >> index) & 1) == 1);
+
+    array
 }
 
-pub fn set_tag(data: usize, bits: [bool; 2]) -> usize {
-    fn set_bit(data: usize, index: usize, value: bool) -> usize {
-        let value = if value { 1 } else { 0 };
-        (data & !(1 << index)) | (value << index)
-    }
-
-    set_bit(data, 0, bits[0]) | set_bit(data, 1, bits[1])
+pub fn set_tag<T: Tag>(mut data: usize, bits: GenericArray<bool, T::Size>) -> usize {
+    bits.iter().enumerate().for_each(|(index, bit)| {
+        let value = if *bit { 1 } else { 0 };
+        data = (data & !(1 << index)) | (value << index);
+    });
+    
+    data
 }
 
 pub trait Tag {
-    fn from_bits(bits: [bool; 2]) -> Self;
-    fn into_bits(self) -> [bool; 2];
+    type Size: ArrayLength<bool>;
+
+    fn from_bits(bits: GenericArray<bool, Self::Size>) -> Self;
+    fn into_bits(self) -> GenericArray<bool, Self::Size>;
 }

@@ -1,5 +1,5 @@
-use crate::tag::{read_tag, set_tag, strip, Tag, MIN_ALIGN};
-use std::{marker::PhantomData, mem};
+use crate::tag::{read_tag, set_tag, strip, Tag};
+use std::marker::PhantomData;
 
 pub struct Shared<'shield, V: 'shield, T: Tag> {
     data: usize,
@@ -14,7 +14,6 @@ impl<'shield, V: 'shield, T: Tag> Shared<'shield, V, T> {
     }
 
     pub unsafe fn from_ptr(ptr: *mut V) -> Self {
-        debug_assert!(mem::align_of::<V>() >= MIN_ALIGN);
         Self::from_data(ptr as usize)
     }
 
@@ -28,7 +27,7 @@ impl<'shield, V: 'shield, T: Tag> Shared<'shield, V, T> {
     }
 
     pub fn as_ptr(&self) -> *mut V {
-        strip(self.data) as *mut V
+        strip::<T>(self.data) as *mut V
     }
 
     pub unsafe fn as_ref(&self) -> Option<&'shield V> {
@@ -58,13 +57,13 @@ impl<'shield, V: 'shield, T: Tag> Shared<'shield, V, T> {
     }
 
     pub fn tag(&self) -> T {
-        let bits = read_tag(self.data);
+        let bits = read_tag::<T>(self.data);
         Tag::from_bits(bits)
     }
 
     pub fn with_tag(&self, tag: T) -> Self {
         let bits = tag.into_bits();
-        let data = set_tag(self.data, bits);
+        let data = set_tag::<T>(self.data, bits);
         Self::from_data(data)
     }
 }

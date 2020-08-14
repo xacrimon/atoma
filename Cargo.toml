@@ -19,4 +19,5 @@ thread_local = ["once_cell"]
 ebr = ["fastrng", "thread_local"]
 
 [dependencies]
+generic-array = "0.14.4"
 once_cell = { version = "1.4.0", optional = true }

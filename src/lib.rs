@@ -1,4 +1,4 @@
-mod object;
+mod reclaimable;
 mod reclaimer;
 mod shield;
 
@@ -11,6 +11,6 @@ mod thread_local;
 #[cfg(feature = "ebr")]
 mod ebr;
 
-pub use object::ObjectManager;
+pub use reclaimable::ReclaimableManager;
 pub use reclaimer::Reclaimer;
 pub use shield::Shield;

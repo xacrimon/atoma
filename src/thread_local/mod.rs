@@ -140,29 +140,27 @@ mod tests {
         x.store(1, Ordering::SeqCst);
     }
 
-    #[cfg(loom)]
+    #[cfg(not(loom))]
     #[test]
     fn create_insert_store_multi_thread() {
-        use crate::shim::{sync::Arc, thread};
         use super::thread_id;
+        use crate::shim::{sync::Arc, thread};
 
-        loom::model(|| {
-            let thread_local = Arc::new(ThreadLocal::new());
-            let mut threads = Vec::new();
+        let thread_local = Arc::new(ThreadLocal::new());
+        let mut threads = Vec::new();
 
-            for _ in 0..32 {
-                let thread_local = Arc::clone(&thread_local);
+        for _ in 0..32 {
+            let thread_local = Arc::clone(&thread_local);
 
-                threads.push(thread::spawn(move || {
-                    let atomic_stored_id = thread_local.get(|id| AtomicUsize::new(id as usize));
-                    let stored_id = atomic_stored_id.load(Ordering::SeqCst);
-                    assert_eq!(stored_id, thread_id::get() as usize);
-                }));
-            }
+            threads.push(thread::spawn(move || {
+                let atomic_stored_id = thread_local.get(|id| AtomicUsize::new(id as usize));
+                let stored_id = atomic_stored_id.load(Ordering::SeqCst);
+                assert_eq!(stored_id, thread_id::get() as usize);
+            }));
+        }
 
-            for thread in threads {
-                thread.join().unwrap();
-            }
-        });
+        for thread in threads {
+            thread.join().unwrap();
+        }
     }
 }

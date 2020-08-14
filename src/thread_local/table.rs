@@ -41,7 +41,10 @@ impl<T> Table<T> {
             }
         }
 
-        Self { buckets: init_empty_buckets(max), previous }
+        Self {
+            buckets: init_empty_buckets(max),
+            previous,
+        }
     }
 
     /// Get the numerically largest thread id this table can store.

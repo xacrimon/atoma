@@ -1,6 +1,7 @@
-mod reclaimable;
-mod reclaimer;
+mod reclaim;
+mod shared;
 mod shield;
+mod tag;
 
 #[cfg(feature = "fastrng")]
 mod fastrng;
@@ -11,6 +12,7 @@ mod thread_local;
 #[cfg(feature = "ebr")]
 mod ebr;
 
-pub use reclaimable::ReclaimableManager;
-pub use reclaimer::Reclaimer;
+pub use reclaim::{ReclaimableManager, Reclaimer};
+pub use shared::Shared;
 pub use shield::Shield;
+pub use tag::Tag;

@@ -4,7 +4,7 @@ const NUMS_2: u64 = 0xa0761d6478bd642f;
 const NUMS_3: u64 = 0xe7037ed1a0b428db;
 
 /// A fast and compact PRNG based on the wyhash algorithm.
-/// This is not cryptographically secure although it does perform very well in statistical tests
+/// This is not cryptographically secure although it does perform well in statistical tests
 /// This is however quite irrelevant as it is only used for reducing the
 /// frequency of certain code paths within the garbage collector and
 /// this only requires a roughly uniform distribution of the output to work well.

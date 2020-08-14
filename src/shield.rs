@@ -1,17 +1,17 @@
-use super::Reclaimer;
+use super::{Reclaimer, ReclaimableManager};
 
-pub struct Shield<'a, R: Reclaimer> {
+pub struct Shield<'a, M: ReclaimableManager, R: Reclaimer<M>> {
     reclaimer: &'a R,
     state: R::ShieldState,
 }
 
-impl<'a, R: Reclaimer> Shield<'a, R> {
+impl<'a, M: ReclaimableManager, R: Reclaimer<M>> Shield<'a, M, R> {
     pub fn retire(&self, parameter: R::RetireParameter) {
         self.reclaimer.retire(&self.state, parameter);
     }
 }
 
-impl<'a, R: Reclaimer> Clone for Shield<'a, R>
+impl<'a, M: ReclaimableManager, R: Reclaimer<M>> Clone for Shield<'a, M, R>
 where
     R::ShieldState: Clone,
 {
@@ -23,7 +23,7 @@ where
     }
 }
 
-impl<'a, R: Reclaimer> Drop for Shield<'a, R> {
+impl<'a, M: ReclaimableManager, R: Reclaimer<M>> Drop for Shield<'a, M, R> {
     fn drop(&mut self) {
         self.reclaimer.drop_shield(&mut self.state);
     }

@@ -1,4 +1,6 @@
 pub trait Reclaimer {
+    type AtomicAdapter;
+    type ShieldAdapter;
     type ShieldState;
     type RetireParameter;
 

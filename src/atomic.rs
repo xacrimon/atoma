@@ -1,8 +1,8 @@
-use crate::{ReclaimableManager, Reclaimer, Shared, Tag};
+use crate::{ReclaimableManager, Reclaimer, Tag};
 use std::{
     marker::PhantomData,
     mem,
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::atomic::AtomicUsize,
 };
 
 pub struct Atomic<R, M, T>
@@ -11,7 +11,7 @@ where
     M: ReclaimableManager,
     T: Tag,
 {
-    data: AtomicUsize,
+    pub(crate) data: AtomicUsize,
     _m0: PhantomData<M>,
     _m1: PhantomData<R>,
     _m2: PhantomData<T>,

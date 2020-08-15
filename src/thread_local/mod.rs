@@ -122,6 +122,8 @@ impl<T: Send + Sync> Drop for ThreadLocal<T> {
 
         // the table must always be valid, this drops it and its child tables.
         unsafe {
+            let mut freed_set = Vec::new();
+            (*table_ptr).drop_manual(&mut freed_set);
             Box::from_raw(table_ptr);
         }
     }

@@ -166,3 +166,14 @@ impl<M: ReclaimableManager> EbrState for Ebr<M> {
         }
     }
 }
+
+impl<M: ReclaimableManager> Drop for Ebr<M> {
+    fn drop(&mut self) {
+        unsafe {
+            self.collect(Epoch::Zero, false);
+            self.collect(Epoch::One, false);
+            self.collect(Epoch::Two, false);
+            self.collect(Epoch::Three, false);
+        }
+    }
+}

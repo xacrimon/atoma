@@ -106,19 +106,20 @@ impl<T> Table<T> {
             read_set: Vec::new(),
         })
     }
-}
 
-impl<T> Drop for Table<T> {
-    fn drop(&mut self) {
+    pub unsafe fn drop_manual(&mut self, freed_set: &mut Vec<*mut T>) {
+        if let Some(mut previous) = self.previous.take() {
+            previous.drop_manual(freed_set);
+        }
+
         for atomic_ptr in &*self.buckets {
             let ptr = atomic_ptr.load(Ordering::Acquire);
 
             // create a box from the pointer and drop it if it isn't null
-            if !ptr.is_null() {
+            if !ptr.is_null() && !freed_set.contains(&ptr) {
                 // if it isn't null `ptr` must be pointing to a valid table
-                unsafe {
-                    Box::from_raw(ptr);
-                }
+                freed_set.push(ptr);
+                Box::from_raw(ptr);
             }
         }
     }

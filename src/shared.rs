@@ -2,14 +2,22 @@ use crate::tag::{read_tag, set_tag, strip, Tag};
 use std::marker::PhantomData;
 
 #[derive(Clone, Copy, Debug)]
-pub struct Shared<'shield, V: 'shield, T: Tag> {
+pub struct Shared<'shield, V, T>
+where
+    V: 'shield,
+    T: Tag,
+{
     pub(crate) data: usize,
     _m0: PhantomData<&'shield ()>,
     _m1: PhantomData<V>,
     _m2: PhantomData<T>,
 }
 
-impl<'shield, V: 'shield, T: Tag> Shared<'shield, V, T> {
+impl<'shield, V, T> Shared<'shield, V, T>
+where
+    V: 'shield,
+    T: Tag,
+{
     pub fn null() -> Self {
         Self::from_data(0)
     }

@@ -89,17 +89,17 @@ impl<T> Queue<T> {
 
     /// Get a reference to the next queue segment, creating it if it doesn't exist
     fn get_next_or_create(&self) -> &Self {
-        let mut next = self.next.load(Ordering::Relaxed);
+        let mut next = self.next.load(Ordering::Acquire);
 
         while next.is_null() {
             let new_queue = Self::new();
 
-            // release is used here so the write becomes visible to the
+            // acq_rel is used here so the write becomes visible to the
             // load in `get_next` and the drop implementation
             let did_swap = self.next.compare_exchange_weak(
                 next,
                 new_queue,
-                Ordering::Release,
+                Ordering::AcqRel,
                 Ordering::Relaxed,
             );
 

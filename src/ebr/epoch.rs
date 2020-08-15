@@ -64,22 +64,16 @@ impl AtomicEpoch {
         }
     }
 
-    /// Load the epoch from the atomic with relaxed ordering.
-    pub fn load(&self) -> Epoch {
-        let raw = self.raw.load(Ordering::Relaxed);
+    /// Load the epoch from the atomic.
+    pub fn load(&self, order: Ordering) -> Epoch {
+        let raw = self.raw.load(order);
         unsafe { Epoch::from_usize_unchecked(raw) }
     }
 
-    /// Load the epoch from the atomic with acquire ordering.
-    pub fn load_acquire(&self) -> Epoch {
-        let raw = self.raw.load(Ordering::Acquire);
-        unsafe { Epoch::from_usize_unchecked(raw) }
-    }
-
-    /// Store an epoch into the atomic with relaxed ordering.
-    pub fn store(&self, epoch: Epoch) {
+    /// Store an epoch into the atomic.
+    pub fn store(&self, epoch: Epoch, order: Ordering) {
         let raw: usize = epoch.into();
-        self.raw.store(raw, Ordering::Relaxed);
+        self.raw.store(raw, order);
     }
 
     /// Try to advance the epoch in this atomic.

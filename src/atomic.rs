@@ -1,26 +1,20 @@
-use crate::{ReclaimableManager, Reclaimer, Tag};
-use std::{
-    marker::PhantomData,
-    mem,
-    sync::atomic::AtomicUsize,
-};
+use crate::{Reclaimer, Tag};
+use std::{marker::PhantomData, mem, sync::atomic::AtomicUsize};
 
-pub struct Atomic<R, M, T>
+pub struct Atomic<R, V, T>
 where
-    R: Reclaimer<M>,
-    M: ReclaimableManager,
+    R: Reclaimer,
     T: Tag,
 {
     pub(crate) data: AtomicUsize,
-    _m0: PhantomData<M>,
-    _m1: PhantomData<R>,
+    _m0: PhantomData<R>,
+    _m1: PhantomData<V>,
     _m2: PhantomData<T>,
 }
 
-impl<R, M, T> Atomic<R, M, T>
+impl<R, V, T> Atomic<R, V, T>
 where
-    R: Reclaimer<M>,
-    M: ReclaimableManager,
+    R: Reclaimer,
     T: Tag,
 {
     pub fn null() -> Self {
@@ -32,7 +26,7 @@ where
         unsafe { mem::transmute(unsync_vec) }
     }
 
-    pub fn from_ptr(ptr: *mut M::Reclaimable) -> Self {
+    pub fn from_ptr(ptr: *mut V) -> Self {
         Self::from_data(ptr as usize)
     }
 

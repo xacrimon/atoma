@@ -10,7 +10,7 @@ const COLLECT_CHANCE: u32 = 4;
 
 /// The interface we need in order to work with the main GC state.
 pub trait EbrState {
-    fn load_epoch(&self) -> Epoch;
+    fn load_epoch(&self, order: Ordering) -> Epoch;
     fn should_advance(&self) -> bool;
     fn try_cycle(&self);
 }
@@ -19,15 +19,23 @@ pub trait EbrState {
 /// We store a local epoch, an active flag and a number generator used
 /// for reducing the frequency of some operations.
 pub struct ThreadState<G> {
+    /// A counter of how many shields are active.
     active: AtomicUsize,
+
+    /// The local epoch of the thread.
     epoch: AtomicEpoch,
+
+    /// A thread local RNG used for lowering the frequence of
+    /// attempted global epoch advancements.
     rng: UnsafeCell<FastRng>,
+
+    /// Marker 0.
     _m0: PhantomData<G>,
 }
 
 impl<G: EbrState> ThreadState<G> {
     pub fn new(state: &G, thread_id: u32) -> Self {
-        let global_epoch = state.load_epoch();
+        let global_epoch = state.load_epoch(Ordering::Relaxed);
 
         Self {
             active: AtomicUsize::new(0),
@@ -53,19 +61,13 @@ impl<G: EbrState> ThreadState<G> {
 
     /// Check if the given thread is in a critical section.
     pub fn is_active(&self) -> bool {
-        // acquire is used here so it is not reordered after a call to `enter`
-        // it's fine if we get some false positives here
-        // but false negatives would cause undefined behaviour
-        // because the global epoch is illegally advanced
+        // acquire is used here so it is not reordered with calls to `enter` or `exit
         self.active.load(Ordering::Acquire) == 0
     }
 
-    /// Get the local epoch of the given thread with relaxed ordering.
-    /// It's fine to use relaxed here since the worst case scenario is that
-    /// a thread attempting to advance the global epoch sees an old local epoch
-    /// which will cause the attempt to fail anyway.
-    pub fn load_epoch(&self) -> Epoch {
-        self.epoch.load()
+    /// Get the local epoch of the given thread.
+    pub fn load_epoch(&self, order: Ordering) -> Epoch {
+        self.epoch.load(order)
     }
 
     /// Enter a critical section with the given thread.
@@ -76,16 +78,18 @@ impl<G: EbrState> ThreadState<G> {
         // since `active` is a counter we only need to
         // update the local epoch when we go from 0 to something else
         //
-        // release is used here because this may not be reordered with a call to `is_active`
-        // that could cause a thread to advance the global epoch illegally
-        if self.active.fetch_add(1, Ordering::Release) == 0 {
-            // relaxed is fine here since loading an old global
-            // cannot cause an illegal epoch advance
-            let global_epoch = state.load_epoch();
+        // seqcst is used here to perform the first half of the store-load fence
+        if self.active.fetch_add(1, Ordering::SeqCst) == 0 {
+            // seqcst is used here to perform the second half of the store-load fence
+            let global_epoch = state.load_epoch(Ordering::SeqCst);
 
-            // relaxed is here because there is only one thread
-            // that may write to this variable
-            self.epoch.store(global_epoch);
+            // relaxed is okay here for two reasons
+            // the first one is that a reordering between this store and an advancement
+            // check will result in a fail anyway, hence this cannot cause an illegal advance
+            // the second reason is that there is only one thread writing to this
+            // atomic and there is a store-load fence preceeding this store
+            // which will prevent reordering between two subsequent stores
+            self.epoch.store(global_epoch, Ordering::Relaxed);
         }
     }
 
@@ -96,10 +100,8 @@ impl<G: EbrState> ThreadState<G> {
     pub unsafe fn exit(&self, state: &G) {
         // decrement the `active` counter and fetch the previous value
         //
-        // relaxed is fine to use here since there is only one local thread that may
-        // call `enter` and `exit` and thus any funny reorderings between
-        // `enter` and `exit are impossible
-        let prev_active = self.active.fetch_sub(1, Ordering::Relaxed);
+        // we need release here to synchronize with calls to `load_epoch`
+        let prev_active = self.active.fetch_sub(1, Ordering::Release);
 
         // if the counter wraps we've called exit more than enter which is not allowed
         debug_assert!(prev_active != 0);
@@ -113,4 +115,5 @@ impl<G: EbrState> ThreadState<G> {
     }
 }
 
-unsafe impl<G: Sync> Sync for ThreadState<G> {}
+unsafe impl<G> Send for ThreadState<G> {}
+unsafe impl<G> Sync for ThreadState<G> {}

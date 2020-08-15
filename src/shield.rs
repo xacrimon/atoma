@@ -1,42 +1,51 @@
-use super::{ReclaimableManager, Reclaimer};
+use super::Reclaimer;
 
-pub struct Shield<'a, R, M>
+pub trait CloneShield<R>
 where
-    R: Reclaimer<M>,
-    M: ReclaimableManager,
+    R: Reclaimer,
+{
+    fn clone_shield(&self, reclaimer: &R) -> Self;
+}
+
+pub struct Shield<'a, R>
+where
+    R: Reclaimer,
 {
     reclaimer: &'a R,
     state: R::ShieldState,
 }
 
-impl<'a, R, M> Shield<'a, R, M>
+impl<'a, R> Shield<'a, R>
 where
-    R: Reclaimer<M>,
-    M: ReclaimableManager,
+    R: Reclaimer,
 {
-    pub fn retire(&self, parameter: R::RetireParameter) {
+    pub(crate) fn new(reclaimer: &'a R, state: R::ShieldState) -> Self {
+        Self { reclaimer, state }
+    }
+
+    pub fn retire(&self, parameter: R::Reclaimable) {
         self.reclaimer.retire(&self.state, parameter);
     }
 }
 
-impl<'a, R, M> Clone for Shield<'a, R, M>
+impl<'a, R> Clone for Shield<'a, R>
 where
-    R: Reclaimer<M>,
-    M: ReclaimableManager,
-    R::ShieldState: Clone,
+    R: Reclaimer,
+    R::ShieldState: CloneShield<R>,
 {
     fn clone(&self) -> Self {
+        let state = self.state.clone_shield(self.reclaimer);
+
         Self {
             reclaimer: self.reclaimer,
-            state: self.state.clone(),
+            state,
         }
     }
 }
 
-impl<'a, R, M> Drop for Shield<'a, R, M>
+impl<'a, R> Drop for Shield<'a, R>
 where
-    R: Reclaimer<M>,
-    M: ReclaimableManager,
+    R: Reclaimer,
 {
     fn drop(&mut self) {
         self.reclaimer.drop_shield(&mut self.state);

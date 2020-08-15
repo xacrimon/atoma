@@ -94,7 +94,7 @@ impl AtomicEpoch {
             current_raw,
             next_raw,
             Ordering::AcqRel,
-            Ordering::Relaxed,
+            Ordering::AcqRel,
         );
 
         if did_advance.is_ok() {

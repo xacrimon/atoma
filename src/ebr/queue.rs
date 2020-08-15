@@ -100,7 +100,7 @@ impl<T> Queue<T> {
                 next,
                 new_queue,
                 Ordering::AcqRel,
-                Ordering::Relaxed,
+                Ordering::AcqRel,
             );
 
             if let Err(actual) = did_swap {

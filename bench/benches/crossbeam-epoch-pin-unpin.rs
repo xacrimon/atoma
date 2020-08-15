@@ -1,9 +1,8 @@
-use criterion::{criterion_group, criterion_main, Criterion};
 use crossbeam_epoch::pin;
+use bench::run_synced;
+use std::sync::Arc;
 
-fn bench_pin(c: &mut Criterion) {
-    c.bench_function("crossbeam-epoch pin & unpin", |b| b.iter(|| pin()));
+fn main() {
+    let ops_per_sec = run_synced(Arc::new(()), |_| drop(pin()));
+    println!("crossbeam-epoch-pin-unpin: {} ops/sec", ops_per_sec);
 }
-
-criterion_group!(benches, bench_pin);
-criterion_main!(benches);

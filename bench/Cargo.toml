@@ -4,22 +4,12 @@ version = "0.1.0"
 authors = ["Acrimon <joel.wejdenstal@gmail.com>"]
 edition = "2018"
 
-[profile.bench]
-codegen_units = 1
+[profile.release]
+codegen-units = 1
 lto = "fat"
 panic = "abort"
 
 [dependencies]
 num_cpus = "1.13.0"
-
-[dev-dependencies]
 crossbeam-epoch = "0.8.2"
 flize = { path = ".." }
-
-[[bench]]
-name = "crossbeam-epoch-pin-unpin"
-harness = false
-
-[[bench]]
-name = "flize-pin-unpin"
-harness = false

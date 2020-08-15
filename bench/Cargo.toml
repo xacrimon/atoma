@@ -4,6 +4,11 @@ version = "0.1.0"
 authors = ["Acrimon <joel.wejdenstal@gmail.com>"]
 edition = "2018"
 
+[profile.bench]
+codegen_units = 1
+lto = "fat"
+panic = "abort"
+
 [dependencies]
 num_cpus = "1.13.0"
 

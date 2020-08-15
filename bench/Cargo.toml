@@ -1,0 +1,16 @@
+[package]
+name = "bench"
+version = "0.1.0"
+authors = ["Acrimon <joel.wejdenstal@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+flize = { path = ".." }
+
+[dev-dependencies]
+criterion = "0.3.3"
+crossbeam-epoch = "0.8.2"
+
+[[bench]]
+name = "crossbeam-epoch-pin-unpin"
+harness = false

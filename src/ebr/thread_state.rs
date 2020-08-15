@@ -1,16 +1,17 @@
 use super::epoch::{AtomicEpoch, Epoch};
 use crate::fastrng::FastRng;
 use std::{
-    cell::UnsafeCell,
+    cell::{Cell, UnsafeCell},
     marker::PhantomData,
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::atomic::{Ordering, self},
 };
 
-const COLLECT_CHANCE: u32 = 4;
+const IS_X86: bool = cfg!(any(target_arch = "x86", target_arch = "x86_64"));
+const COLLECT_CHANCE: u32 = 128;
 
 /// The interface we need in order to work with the main GC state.
 pub trait EbrState {
-    fn load_epoch(&self, order: Ordering) -> Epoch;
+    fn load_epoch_relaxed(&self) -> Epoch;
     fn should_advance(&self) -> bool;
     fn try_cycle(&self);
 }
@@ -20,7 +21,7 @@ pub trait EbrState {
 /// for reducing the frequency of some operations.
 pub struct ThreadState<G> {
     /// A counter of how many shields are active.
-    active: AtomicUsize,
+    shields: UnsafeCell<Cell<u32>>,
 
     /// The local epoch of the thread.
     epoch: AtomicEpoch,
@@ -35,10 +36,10 @@ pub struct ThreadState<G> {
 
 impl<G: EbrState> ThreadState<G> {
     pub fn new(state: &G, thread_id: u32) -> Self {
-        let global_epoch = state.load_epoch(Ordering::Relaxed);
+        let global_epoch = state.load_epoch_relaxed();
 
         Self {
-            active: AtomicUsize::new(0),
+            shields: UnsafeCell::new(Cell::new(0)),
             epoch: AtomicEpoch::new(global_epoch),
             rng: UnsafeCell::new(FastRng::new(thread_id)),
             _m0: PhantomData,
@@ -59,15 +60,9 @@ impl<G: EbrState> ThreadState<G> {
         (rng.generate() % COLLECT_CHANCE == 0) && state.should_advance()
     }
 
-    /// Check if the given thread is in a critical section.
-    pub fn is_active(&self) -> bool {
-        // acquire is used here so it is not reordered with calls to `enter` or `exit
-        self.active.load(Ordering::Acquire) == 0
-    }
-
     /// Get the local epoch of the given thread.
-    pub fn load_epoch(&self, order: Ordering) -> Epoch {
-        self.epoch.load(order)
+    pub fn load_epoch_acquire(&self) -> Epoch {
+        self.epoch.load(Ordering::Acquire)
     }
 
     /// Enter a critical section with the given thread.
@@ -75,21 +70,23 @@ impl<G: EbrState> ThreadState<G> {
     /// # Safety
     /// This function may only be called from the thread this state belongs to.
     pub unsafe fn enter(&self, state: &G) {
-        // since `active` is a counter we only need to
-        // update the local epoch when we go from 0 to something else
-        //
-        // seqcst is used here to perform the first half of the store-load fence
-        if self.active.fetch_add(1, Ordering::SeqCst) == 0 {
-            // seqcst is used here to perform the second half of the store-load fence
-            let global_epoch = state.load_epoch(Ordering::SeqCst);
+        let atomic_cell = &*self.shields.get();
+        let previous_shields = atomic_cell.get();
+        atomic_cell.set(previous_shields + 1);
 
-            // relaxed is okay here for two reasons
-            // the first one is that a reordering between this store and an advancement
-            // check will result in a fail anyway, hence this cannot cause an illegal advance
-            // the second reason is that there is only one thread writing to this
-            // atomic and there is a store-load fence preceeding this store
-            // which will prevent reordering between two subsequent stores
-            self.epoch.store(global_epoch, Ordering::Relaxed);
+        if previous_shields == 0 {
+            let global_epoch = state.load_epoch_relaxed();
+            let new_epoch = global_epoch.pinned();
+
+            if IS_X86 {
+                let current = Epoch::ZERO;
+                let previous_epoch = self.epoch.compare_and_swap_seq_cst(current, new_epoch);
+                debug_assert_eq!(current, previous_epoch);
+                atomic::compiler_fence(Ordering::SeqCst);
+            } else {
+                self.epoch.store(new_epoch, Ordering::Relaxed);
+                atomic::fence(Ordering::SeqCst);
+            }
         }
     }
 
@@ -98,16 +95,13 @@ impl<G: EbrState> ThreadState<G> {
     /// # Safety
     /// This function may only be called from the thread this state belongs to.
     pub unsafe fn exit(&self, state: &G) {
-        // decrement the `active` counter and fetch the previous value
-        //
-        // we need release here to synchronize with calls to `load_epoch`
-        let prev_active = self.active.fetch_sub(1, Ordering::Release);
+        let atomic_cell = &*self.shields.get();
+        let previous_shields = atomic_cell.get();
+        atomic_cell.set(previous_shields - 1);
 
-        // if the counter wraps we've called exit more than enter which is not allowed
-        debug_assert!(prev_active != 0);
+        if previous_shields == 1 {
+            self.epoch.store(Epoch::ZERO, Ordering::Release);
 
-        // check if we should try to advance the epoch if it reaches 0
-        if prev_active == 1 {
             if self.should_advance(state) {
                 state.try_cycle();
             }

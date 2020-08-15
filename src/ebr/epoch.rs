@@ -1,95 +1,76 @@
-use std::{
-    hint::unreachable_unchecked,
-    sync::atomic::{AtomicUsize, Ordering},
-};
+use std::sync::atomic::{AtomicU8, Ordering};
 
-/// Represents a valid state epoch.
-/// Since we only have 4 of them we can safely represent them with an enum.
+const PIN_MASK: u8 = 0b00000001;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Epoch {
-    Zero,
-    One,
-    Two,
-    Three,
+pub struct Epoch {
+    data: u8,
 }
 
 impl Epoch {
-    /// Get the next valid epoch. This wraps as it transitions from `3 -> 0`.
+    pub const ZERO: Self = Self::from_raw(0);
+    pub const ONE: Self = Self::from_raw(1);
+    pub const TWO: Self = Self::from_raw(2);
+    pub const THREE: Self = Self::from_raw(3);
+
+    const fn from_raw(data: u8) -> Self {
+        Self { data }
+    }
+
+    pub fn into_raw(self) -> u8 {
+        self.data
+    }
+
+    pub fn is_pinned(self) -> bool {
+        (self.data & PIN_MASK) != 0
+    }
+    
+    pub fn pinned(self) -> Self {
+        Self::from_raw(self.data | PIN_MASK)
+    }
+
+    pub fn unpinned(self) -> Self {
+        Self::from_raw(self.data & !PIN_MASK)
+    }
+
     pub fn next(self) -> Self {
-        match self {
-            Self::Zero => Self::One,
-            Self::One => Self::Two,
-            Self::Two => Self::Three,
-            Self::Three => Self::Zero,
-        }
-    }
-
-    /// Create an epoch from a raw integer value.
-    ///
-    /// # Safety
-    /// This function may only be called with integers 0..4.
-    unsafe fn from_usize_unchecked(raw: usize) -> Self {
-        match raw {
-            0 => Self::Zero,
-            1 => Self::One,
-            2 => Self::Two,
-            3 => Self::Three,
-            _ => unreachable_unchecked(),
-        }
+        let data = (self.unpinned().data + 1) % 4;
+        Self::from_raw(data)
     }
 }
 
-/// Convert an epoch into it's raw representation.
-impl Into<usize> for Epoch {
-    fn into(self) -> usize {
-        match self {
-            Self::Zero => 0,
-            Self::One => 1,
-            Self::Two => 2,
-            Self::Three => 3,
-        }
-    }
-}
-
-/// An atomic epoch value.
 pub struct AtomicEpoch {
-    raw: AtomicUsize,
+    raw: AtomicU8,
 }
 
 impl AtomicEpoch {
-    /// Create a new atomic epoch with a starting value.
     pub fn new(epoch: Epoch) -> Self {
         Self {
-            raw: AtomicUsize::new(epoch.into()),
+            raw: AtomicU8::new(epoch.into_raw()),
         }
     }
 
-    /// Load the epoch from the atomic.
     pub fn load(&self, order: Ordering) -> Epoch {
         let raw = self.raw.load(order);
-        unsafe { Epoch::from_usize_unchecked(raw) }
+        Epoch::from_raw(raw)
     }
-
-    /// Store an epoch into the atomic.
     pub fn store(&self, epoch: Epoch, order: Ordering) {
-        let raw: usize = epoch.into();
+        let raw = epoch.into_raw();
         self.raw.store(raw, order);
     }
 
-    /// Try to advance the epoch in this atomic.
-    /// On success it returns the new epoch.
-    /// The atomic value is not updated on error.
-    pub fn try_advance(&self, current: Epoch) -> Result<Epoch, ()> {
-        let current_raw: usize = current.into();
-        let next = current.next();
-        let next_raw: usize = next.into();
+    pub fn compare_and_swap_seq_cst(&self, current: Epoch, new: Epoch) -> Epoch {
+        let current_raw = current.into_raw();
+        let new_raw = new.into_raw();
+        let previous_raw = self.raw.compare_and_swap(current_raw, new_raw, Ordering::SeqCst);
+        Epoch::from_raw(previous_raw)
+    }
 
-        // we need to use acq_rel here in order for this to synchronize properly with
-        // attempts to advance in other threads and certain code that
-        // must have the correct epoch performing an acquire load
-        //
-        // in practice since the relative frequency of calls to this function
-        // is low this should not have problematic impact on performance
+    pub fn try_advance(&self, current: Epoch) -> Result<Epoch, ()> {
+        let current_raw = current.into_raw();
+        let next = current.next();
+        let next_raw = next.into_raw();
+
         let did_advance = self.raw.compare_exchange_weak(
             current_raw,
             next_raw,

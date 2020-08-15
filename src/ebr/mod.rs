@@ -14,7 +14,7 @@ use std::{
     marker::PhantomData,
     mem::MaybeUninit,
     ptr,
-    sync::atomic::{AtomicPtr, Ordering},
+    sync::atomic::{AtomicPtr, Ordering, self},
 };
 use thread_state::{EbrState, ThreadState};
 
@@ -30,7 +30,7 @@ pub struct Ebr<M: ReclaimableManager> {
 impl<M: ReclaimableManager> Ebr<M> {
     pub fn new(reclaimable_manager: M) -> Self {
         Self {
-            epoch: AtomicEpoch::new(Epoch::Zero),
+            epoch: AtomicEpoch::new(Epoch::ZERO),
             threads: ThreadLocal::new(),
             reclaimable_manager,
             queues: [
@@ -52,19 +52,20 @@ impl<M: ReclaimableManager> Ebr<M> {
     }
 
     fn get_queue(&self, epoch: Epoch) -> &TypedQueue<M::Reclaimable> {
-        let raw_epoch: usize = epoch.into();
+        let raw_epoch = epoch.into_raw() as usize;
         let atomic_queue = unsafe { self.queues.get_unchecked(raw_epoch) };
         unsafe { &*atomic_queue.load(Ordering::Acquire) }
     }
 
     fn try_advance(&self) -> Result<Epoch, ()> {
-        let global_epoch = self.epoch.load(Ordering::Acquire);
+        let global_epoch = self.epoch.load(Ordering::Relaxed);
 
         let can_collect = self
             .threads
             .iter()
-            .filter(|state| state.is_active())
-            .all(|state| state.load_epoch(Ordering::Acquire) == global_epoch);
+            .map(|state| state.load_epoch_acquire())
+            .filter(|epoch| epoch.is_pinned())
+            .all(|epoch| epoch.unpinned() == global_epoch);
 
         if can_collect {
             self.epoch.try_advance(global_epoch)
@@ -74,7 +75,7 @@ impl<M: ReclaimableManager> Ebr<M> {
     }
 
     unsafe fn collect(&self, epoch: Epoch, replace: bool) {
-        let raw_epoch: usize = epoch.into();
+        let raw_epoch = epoch.into_raw() as usize;
 
         let new_queue_ptr = if replace {
             Queue::new()
@@ -139,15 +140,16 @@ impl<M: ReclaimableManager> Reclaimer for Ebr<M> {
     }
 
     fn retire(&self, _state: &Self::ShieldState, param: Self::Reclaimable) {
+        atomic::fence(Ordering::SeqCst);
         let item = UnsafeCell::new(MaybeUninit::new(param));
-        let epoch = self.epoch.load(Ordering::Acquire);
+        let epoch = self.epoch.load(Ordering::Relaxed);
         self.get_queue(epoch).push(item);
     }
 }
 
 impl<M: ReclaimableManager> EbrState for Ebr<M> {
-    fn load_epoch(&self, order: Ordering) -> Epoch {
-        self.epoch.load(order)
+    fn load_epoch_relaxed(&self) -> Epoch {
+        self.epoch.load(Ordering::Relaxed)
     }
 
     fn should_advance(&self) -> bool {
@@ -170,10 +172,10 @@ impl<M: ReclaimableManager> EbrState for Ebr<M> {
 impl<M: ReclaimableManager> Drop for Ebr<M> {
     fn drop(&mut self) {
         unsafe {
-            self.collect(Epoch::Zero, false);
-            self.collect(Epoch::One, false);
-            self.collect(Epoch::Two, false);
-            self.collect(Epoch::Three, false);
+            self.collect(Epoch::ZERO, false);
+            self.collect(Epoch::ONE, false);
+            self.collect(Epoch::TWO, false);
+            self.collect(Epoch::THREE, false);
         }
     }
 }

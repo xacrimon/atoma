@@ -1,5 +1,4 @@
 use super::epoch::{AtomicEpoch, Epoch};
-use crate::fastrng::FastRng;
 use std::{
     cell::{Cell, UnsafeCell},
     marker::PhantomData,
@@ -7,7 +6,7 @@ use std::{
 };
 
 const IS_X86: bool = cfg!(any(target_arch = "x86", target_arch = "x86_64"));
-const COLLECT_CHANCE: u32 = 128;
+const ADVANCE_PROBABILITY: usize = 128;
 
 /// The interface we need in order to work with the main GC state.
 pub trait EbrState {
@@ -26,22 +25,21 @@ pub struct ThreadState<G> {
     /// The local epoch of the thread.
     epoch: AtomicEpoch,
 
-    /// A thread local RNG used for lowering the frequence of
-    /// attempted global epoch advancements.
-    rng: UnsafeCell<FastRng>,
+    /// A counter for periodically attempting to advance the epoch.
+    advance_counter: UnsafeCell<Cell<usize>>,
 
     /// Marker 0.
     _m0: PhantomData<G>,
 }
 
 impl<G: EbrState> ThreadState<G> {
-    pub fn new(state: &G, thread_id: u32) -> Self {
+    pub fn new(state: &G) -> Self {
         let global_epoch = state.load_epoch_relaxed();
 
         Self {
             shields: UnsafeCell::new(Cell::new(0)),
             epoch: AtomicEpoch::new(global_epoch),
-            rng: UnsafeCell::new(FastRng::new(thread_id)),
+            advance_counter: UnsafeCell::new(Cell::new(0)),
             _m0: PhantomData,
         }
     }
@@ -56,8 +54,16 @@ impl<G: EbrState> ThreadState<G> {
     /// This is due to the fact that it will access the thread-local
     /// PRNG without synchronization.
     unsafe fn should_advance(&self, state: &G) -> bool {
-        let rng = &mut *self.rng.get();
-        (rng.generate() % COLLECT_CHANCE == 0) && state.should_advance()
+        let advance_counter_cell = &*self.advance_counter.get();
+        let previous_advance_counter = advance_counter_cell.get();
+
+        if previous_advance_counter == ADVANCE_PROBABILITY - 1 {
+            advance_counter_cell.set(0);
+            state.should_advance()
+        } else {
+            advance_counter_cell.set(previous_advance_counter + 1);
+            false
+        }
     }
 
     /// Get the local epoch of the given thread.

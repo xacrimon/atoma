@@ -103,7 +103,7 @@ impl<M: ReclaimableManager> Ebr<M> {
     }
 
     fn thread_state(&self) -> &ThreadState<Self> {
-        self.threads.get(|id| ThreadState::new(&self, id))
+        self.threads.get(|| ThreadState::new(&self))
     }
 }
 

@@ -1,7 +1,7 @@
 use std::{thread, sync::{Arc, Barrier}, time::Instant};
 use flize::{ebr::Ebr, function_runner::FunctionRunner};
 
-const TOTAL_OPS: usize = 1000000000;
+const TOTAL_OPS: usize = 5000000000;
 
 fn run_synced<T: 'static + Send + Sync, F: 'static + FnMut(&T) + Clone + Send>(data: Arc<T>, f: F) -> f32 {
     let threads = num_cpus::get();

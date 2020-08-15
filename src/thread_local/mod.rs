@@ -27,13 +27,13 @@ impl<T: Send + Sync> ThreadLocal<T> {
     /// Get the value for this thread or initialize it with the given function if it doesn't exist.
     pub fn get<F>(&self, create: F) -> &T
     where
-        F: FnOnce(u32) -> T,
+        F: FnOnce() -> T,
     {
         let id = thread_id::get();
         let id_usize = id as usize;
 
         self.get_fast(id_usize).unwrap_or_else(|| {
-            let data = Box::into_raw(Box::new(create(id)));
+            let data = Box::into_raw(Box::new(create()));
             unsafe { self.insert(id_usize, data) }
         })
     }
@@ -144,7 +144,7 @@ mod tests {
     #[test]
     fn create_insert_store_single_thread() {
         let thread_local = ThreadLocal::new();
-        let x = thread_local.get(|id| AtomicUsize::new(id as usize));
+        let x = thread_local.get(|| AtomicUsize::new(thread_id::get() as usize));
         x.store(1, Ordering::SeqCst);
     }
 
@@ -157,7 +157,7 @@ mod tests {
             let thread_local = Arc::clone(&thread_local);
 
             threads.push(thread::spawn(move || {
-                let atomic_stored_id = thread_local.get(|id| AtomicUsize::new(id as usize));
+                let atomic_stored_id = thread_local.get(|| AtomicUsize::new(thread_id::get() as usize));
                 let stored_id = atomic_stored_id.load(Ordering::SeqCst);
                 assert_eq!(stored_id, thread_id::get() as usize);
             }));

@@ -28,9 +28,9 @@ fn run_synced<T: 'static + Send + Sync, F: 'static + FnMut(&T) + Clone + Send>(d
     let start = Instant::now();
 
     barrier.wait();
-    let micros = start.elapsed().as_micros() as f32;
+    let micros = start.elapsed().as_nanos() as f32;
 
-    TOTAL_OPS as f32 / micros * 1000000 as f32
+    TOTAL_OPS as f32 / micros * 1000000000 as f32
 }
 
 fn main() {

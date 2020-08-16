@@ -16,30 +16,8 @@ pub struct Table<T> {
 impl<T> Table<T> {
     pub fn new(max: usize, previous: Option<Box<Self>>) -> Self {
         fn init_empty_buckets<T>(amount: usize) -> Box<[AtomicPtr<T>]> {
-            #[cfg(not(loom))]
-            {
-                let unsync_buckets = vec![ptr::null_mut::<T>(); amount].into_boxed_slice();
-                unsafe { mem::transmute(unsync_buckets) }
-            }
-
-            #[cfg(loom)]
-            {
-                use mem::MaybeUninit;
-
-                let mut buckets = Vec::new();
-
-                for _ in 0..amount {
-                    buckets.push(MaybeUninit::uninit())
-                }
-
-                for bucket in &mut buckets {
-                    unsafe {
-                        ptr::write(bucket.as_mut_ptr(), AtomicPtr::new(ptr::null_mut::<T>()));
-                    }
-                }
-
-                unsafe { mem::transmute(buckets.into_boxed_slice()) }
-            }
+            let unsync_buckets = vec![ptr::null_mut::<T>(); amount].into_boxed_slice();
+            unsafe { mem::transmute(unsync_buckets) }
         }
 
         Self {

@@ -2,7 +2,7 @@ use super::epoch::{AtomicEpoch, Epoch};
 use std::{
     cell::{Cell, UnsafeCell},
     marker::PhantomData,
-    sync::atomic::{Ordering, self},
+    sync::atomic::{self, Ordering},
 };
 
 const IS_X86: bool = cfg!(any(target_arch = "x86", target_arch = "x86_64"));

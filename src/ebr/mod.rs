@@ -14,7 +14,7 @@ use std::{
     marker::PhantomData,
     mem::MaybeUninit,
     ptr,
-    sync::atomic::{AtomicPtr, Ordering, self},
+    sync::atomic::{self, AtomicPtr, Ordering},
 };
 use thread_state::{EbrState, ThreadState};
 

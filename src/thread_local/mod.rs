@@ -157,7 +157,8 @@ mod tests {
             let thread_local = Arc::clone(&thread_local);
 
             threads.push(thread::spawn(move || {
-                let atomic_stored_id = thread_local.get(|| AtomicUsize::new(thread_id::get() as usize));
+                let atomic_stored_id =
+                    thread_local.get(|| AtomicUsize::new(thread_id::get() as usize));
                 let stored_id = atomic_stored_id.load(Ordering::SeqCst);
                 assert_eq!(stored_id, thread_id::get() as usize);
             }));

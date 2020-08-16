@@ -24,7 +24,7 @@ impl Epoch {
     pub fn is_pinned(self) -> bool {
         (self.data & PIN_MASK) != 0
     }
-    
+
     pub fn pinned(self) -> Self {
         Self::from_raw(self.data | PIN_MASK)
     }
@@ -62,7 +62,9 @@ impl AtomicEpoch {
     pub fn compare_and_swap_seq_cst(&self, current: Epoch, new: Epoch) -> Epoch {
         let current_raw = current.into_raw();
         let new_raw = new.into_raw();
-        let previous_raw = self.raw.compare_and_swap(current_raw, new_raw, Ordering::SeqCst);
+        let previous_raw = self
+            .raw
+            .compare_and_swap(current_raw, new_raw, Ordering::SeqCst);
         Epoch::from_raw(previous_raw)
     }
 

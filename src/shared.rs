@@ -22,6 +22,8 @@ where
         Self::from_raw(0)
     }
 
+    /// # Safety
+    /// The alignment of `V` must free up sufficient low bits so that `T` fits.
     pub unsafe fn from_ptr(ptr: *mut V) -> Self {
         Self::from_raw(ptr as usize)
     }

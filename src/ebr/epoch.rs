@@ -59,12 +59,9 @@ impl AtomicEpoch {
         self.raw.store(raw, order);
     }
 
-    pub fn compare_and_swap_seq_cst(&self, current: Epoch, new: Epoch) -> Epoch {
-        let current_raw = current.into_raw();
+    pub fn swap_seq_cst(&self, new: Epoch) -> Epoch {
         let new_raw = new.into_raw();
-        let previous_raw = self
-            .raw
-            .compare_and_swap(current_raw, new_raw, Ordering::SeqCst);
+        let previous_raw = self.raw.swap(new_raw, Ordering::SeqCst);
         Epoch::from_raw(previous_raw)
     }
 

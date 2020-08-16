@@ -85,9 +85,8 @@ impl<G: EbrState> ThreadState<G> {
             let new_epoch = global_epoch.pinned();
 
             if IS_X86 {
-                let current = Epoch::ZERO;
-                let previous_epoch = self.epoch.compare_and_swap_seq_cst(current, new_epoch);
-                debug_assert_eq!(current, previous_epoch);
+                let previous_epoch = self.epoch.swap_seq_cst(new_epoch);
+                debug_assert_eq!(Epoch::ZERO, previous_epoch);
                 atomic::compiler_fence(Ordering::SeqCst);
             } else {
                 self.epoch.store(new_epoch, Ordering::Relaxed);

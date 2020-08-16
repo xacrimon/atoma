@@ -67,8 +67,8 @@ impl<G: EbrState> ThreadState<G> {
     }
 
     /// Get the local epoch of the given thread.
-    pub fn load_epoch_acquire(&self) -> Epoch {
-        self.epoch.load(Ordering::Acquire)
+    pub fn load_epoch_relaxed(&self) -> Epoch {
+        self.epoch.load(Ordering::Relaxed)
     }
 
     /// Enter a critical section with the given thread.
@@ -106,7 +106,7 @@ impl<G: EbrState> ThreadState<G> {
         atomic_cell.set(previous_shields - 1);
 
         if previous_shields == 1 {
-            self.epoch.store(Epoch::ZERO, Ordering::Release);
+            self.epoch.store(Epoch::ZERO, Ordering::Relaxed);
 
             if self.should_advance(state) {
                 state.try_cycle();

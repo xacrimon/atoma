@@ -63,7 +63,7 @@ impl<M: ReclaimableManager> Ebr<M> {
         let can_collect = self
             .threads
             .iter()
-            .map(|state| state.load_epoch_acquire())
+            .map(|state| state.load_epoch_relaxed())
             .filter(|epoch| epoch.is_pinned())
             .all(|epoch| epoch.unpinned() == global_epoch);
 

@@ -7,19 +7,19 @@ where
     fn clone_shield(&self, reclaimer: &R) -> Self;
 }
 
-pub struct Shield<'a, R>
+pub struct Shield<'reclaimer, R>
 where
     R: Reclaimer,
 {
-    reclaimer: &'a R,
+    reclaimer: &'reclaimer R,
     state: R::ShieldState,
 }
 
-impl<'a, R> Shield<'a, R>
+impl<'reclaimer, R> Shield<'reclaimer, R>
 where
     R: Reclaimer,
 {
-    pub(crate) fn new(reclaimer: &'a R, state: R::ShieldState) -> Self {
+    pub(crate) fn new(reclaimer: &'reclaimer R, state: R::ShieldState) -> Self {
         Self { reclaimer, state }
     }
 
@@ -28,7 +28,7 @@ where
     }
 }
 
-impl<'a, R> Clone for Shield<'a, R>
+impl<'reclaimer, R> Clone for Shield<'reclaimer, R>
 where
     R: Reclaimer,
     R::ShieldState: CloneShield<R>,
@@ -43,7 +43,7 @@ where
     }
 }
 
-impl<'a, R> Drop for Shield<'a, R>
+impl<'reclaimer, R> Drop for Shield<'reclaimer, R>
 where
     R: Reclaimer,
 {

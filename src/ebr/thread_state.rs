@@ -52,7 +52,7 @@ impl<G: EbrState> ThreadState<G> {
     /// # Safety
     /// This function may only be called from the thread this state belongs to.
     /// This is due to the fact that it will access the thread-local
-    /// PRNG without synchronization.
+    /// counter without synchronization.
     unsafe fn should_advance(&self, state: &G) -> bool {
         let advance_counter_cell = &*self.advance_counter.get();
         let previous_advance_counter = advance_counter_cell.get();

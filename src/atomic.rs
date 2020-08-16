@@ -26,7 +26,9 @@ where
         let unsync_vec = vec![0_usize; len];
 
         #[allow(clippy::unsound_collection_transmute)]
-        unsafe { mem::transmute(unsync_vec) }
+        unsafe {
+            mem::transmute(unsync_vec)
+        }
     }
 
     pub fn from_ptr(ptr: *mut V) -> Self {

@@ -26,6 +26,7 @@ pub struct Queue<T> {
 impl<T> Queue<T> {
     /// Create a new queue segment.
     pub fn new() -> *mut Self {
+        #[allow(clippy::uninit_assumed_init)]
         let nodes = unsafe { MaybeUninit::uninit().assume_init() };
 
         Box::into_raw(Box::new(Self {

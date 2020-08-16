@@ -32,6 +32,8 @@ impl Function {
         unsafe {
             if size <= mem::size_of::<Data>() && align <= mem::align_of::<Data>() {
                 let mut data = MaybeUninit::<Data>::uninit();
+
+                #[allow(clippy::cast_ptr_alignment)]
                 ptr::write(data.as_mut_ptr() as *mut F, f);
 
                 unsafe fn call<F: FnOnce()>(raw: *mut u8) {
@@ -47,9 +49,12 @@ impl Function {
             } else {
                 let b: Box<F> = Box::new(f);
                 let mut data = MaybeUninit::<Data>::uninit();
+
+                #[allow(clippy::cast_ptr_alignment)]
                 ptr::write(data.as_mut_ptr() as *mut Box<F>, b);
 
                 unsafe fn call<F: FnOnce()>(raw: *mut u8) {
+                    #[allow(clippy::cast_ptr_alignment)]
                     let b: Box<F> = ptr::read(raw as *mut Box<F>);
                     (*b)();
                 }

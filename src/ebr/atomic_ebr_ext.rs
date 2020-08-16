@@ -1,6 +1,6 @@
+use super::Ebr;
 use crate::{Atomic, ReclaimableManager, Shared, Shield, Tag};
 use std::sync::atomic::Ordering;
-use super::Ebr;
 
 pub trait AtomicEbrExt {
     type M: ReclaimableManager;
@@ -13,7 +13,7 @@ pub trait AtomicEbrExt {
         _shield: &'shield Shield<'_, Ebr<Self::M>>,
     ) -> Shared<'shield, Self::V, Self::T>;
 
-    fn store<'shield>(&self, new: Shared<'_, Self::V, Self::T>, order: Ordering);
+    fn store(&self, new: Shared<'_, Self::V, Self::T>, order: Ordering);
 
     fn swap<'shield>(
         &self,

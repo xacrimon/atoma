@@ -123,14 +123,12 @@ impl<'a, T> Iterator for Iter<'a, T> {
             Self::Local(iter) => {
                 if let Some(item) = iter.next() {
                     Some(item)
+                } else if let Some(previous_table) = iter.table.previous() {
+                    *self = Self::Chain(Box::new(previous_table.iter()));
+                    self.next()
                 } else {
-                    if let Some(previous_table) = iter.table.previous() {
-                        *self = Self::Chain(Box::new(previous_table.iter()));
-                        self.next()
-                    } else {
-                        *self = Self::Finished;
-                        None
-                    }
+                    *self = Self::Finished;
+                    None
                 }
             }
 

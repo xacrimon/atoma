@@ -1,6 +1,7 @@
 use crate::{Reclaimer, Tag};
 use std::{marker::PhantomData, mem, sync::atomic::AtomicUsize};
 
+#[repr(transparent)]
 pub struct Atomic<R, V, T>
 where
     R: Reclaimer,
@@ -22,7 +23,9 @@ where
     }
 
     pub fn null_vec(len: usize) -> Vec<Self> {
-        let unsync_vec = vec![0; len];
+        let unsync_vec = vec![0_usize; len];
+
+        #[allow(clippy::unsound_collection_transmute)]
         unsafe { mem::transmute(unsync_vec) }
     }
 

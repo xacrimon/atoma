@@ -43,10 +43,16 @@ where
         strip::<T>(self.data) as *mut V
     }
 
+    /// # Safety
+    /// - The pointer must either be null or point to a valid instance of `V`.
+    /// - You must ensure the instance of `V` is not borrowed mutably.
     pub unsafe fn as_ref(&self) -> Option<&'shield V> {
         self.as_ptr().as_ref()
     }
 
+    /// # Safety
+    /// - The pointer must either be null or point to a valid instance of `V`.
+    /// - You must ensure the instance of `V` is not borrowed.
     pub unsafe fn as_mut_ref(&mut self) -> Option<&'shield mut V> {
         let ptr = self.as_ptr();
 
@@ -57,10 +63,16 @@ where
         }
     }
 
+    /// # Safety
+    /// - The pointer must point to a valid instance of `V`.
+    /// - You must ensure the instance of `V` is not borrowed mutably.
     pub unsafe fn as_ref_unchecked(&self) -> &'shield V {
         &*self.as_ptr()
     }
 
+    /// # Safety
+    /// - The pointer must point to a valid instance of `V`.
+    /// - You must ensure the instance of `V` is not borrowed.
     pub unsafe fn as_mut_ref_unchecked(&mut self) -> &'shield mut V {
         &mut *self.as_ptr()
     }

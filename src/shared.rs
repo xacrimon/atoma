@@ -1,7 +1,7 @@
 use crate::tag::{read_tag, set_tag, strip, Tag};
 use std::marker::PhantomData;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Shared<'shield, V, T>
 where
     V: 'shield,
@@ -19,20 +19,24 @@ where
     T: Tag,
 {
     pub fn null() -> Self {
-        Self::from_data(0)
+        Self::from_raw(0)
     }
 
     pub unsafe fn from_ptr(ptr: *mut V) -> Self {
-        Self::from_data(ptr as usize)
+        Self::from_raw(ptr as usize)
     }
 
-    pub fn from_data(data: usize) -> Self {
+    pub fn from_raw(data: usize) -> Self {
         Self {
             data,
             _m0: PhantomData,
             _m1: PhantomData,
             _m2: PhantomData,
         }
+    }
+
+    pub fn into_raw(self) -> usize {
+        self.data
     }
 
     pub fn as_ptr(&self) -> *mut V {
@@ -73,6 +77,6 @@ where
     pub fn with_tag(&self, tag: T) -> Self {
         let bits = tag.serialize();
         let data = set_tag::<T>(self.data, bits);
-        Self::from_data(data)
+        Self::from_raw(data)
     }
 }

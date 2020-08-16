@@ -1,6 +1,9 @@
+mod atomic_ebr_ext;
 mod epoch;
 mod queue;
 mod thread_state;
+
+pub use atomic_ebr_ext::AtomicEbrExt;
 
 use crate::{
     shield::{CloneShield, Shield},

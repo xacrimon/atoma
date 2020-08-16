@@ -1,13 +1,14 @@
-mod atomic;
 pub mod function_runner;
+
+#[cfg(feature = "ebr")]
+pub mod ebr;
+
+mod atomic;
 mod reclaim;
 mod shared;
 mod shield;
 mod tag;
 mod thread_local;
-
-#[cfg(feature = "ebr")]
-pub mod ebr;
 
 pub use atomic::Atomic;
 pub use generic_array::typenum;

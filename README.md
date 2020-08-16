@@ -1,7 +1,8 @@
 # flize
 
 flize implements schemes for concurrent resource reclamation.
-None of the implemented schemes requires any sort of global state.
+None of the implemented schemes requires any sort of global state which is a nice
+departure from the restrictions `crossbeam-epoch` imposes.
 
 This crate is useful if you have resources that require destruction
 in a concurrent environment and you don't want to pay the price of locking.

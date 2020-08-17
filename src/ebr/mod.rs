@@ -14,7 +14,6 @@ use epoch::{AtomicEpoch, Epoch};
 use queue::Queue;
 use std::{
     cell::UnsafeCell,
-    marker::PhantomData,
     mem::MaybeUninit,
     ptr,
     sync::atomic::{self, AtomicPtr, Ordering},
@@ -47,11 +46,11 @@ impl<M: ReclaimableManager> Ebr<M> {
 
     pub fn shield(&self) -> Shield<'_, Self> {
         unsafe {
-            self.thread_state().enter(&self);
+            let thread_state = self.thread_state();
+            thread_state.enter(&self);
+            let state = ShieldState::new(thread_state);
+            Shield::new(&self, state)
         }
-
-        let state = ShieldState::new();
-        Shield::new(&self, state)
     }
 
     fn get_queue(&self, epoch: Epoch) -> &TypedQueue<M::Reclaimable> {
@@ -110,30 +109,30 @@ impl<M: ReclaimableManager> Ebr<M> {
     }
 }
 
-pub struct ShieldState {
-    _m0: PhantomData<*mut ()>,
+pub struct ShieldState<M: ReclaimableManager>{
+    thread_state: *const ThreadState<Ebr<M>>,
 }
 
-impl ShieldState {
-    fn new() -> Self {
-        Self { _m0: PhantomData }
+impl<M: ReclaimableManager> ShieldState<M> {
+    fn new(thread_state: &ThreadState<Ebr<M>>) -> Self {
+        Self { thread_state }
     }
 }
 
-impl<M: ReclaimableManager> CloneShield<Ebr<M>> for ShieldState {
+impl<M: ReclaimableManager> CloneShield<Ebr<M>> for ShieldState<M> {
     fn clone_shield(&self, reclaimer: &Ebr<M>) -> Self {
         unsafe {
-            reclaimer.thread_state().enter(reclaimer);
+            let thread_state = &*self.thread_state;
+            thread_state.enter(reclaimer);
+            Self::new(thread_state)
         }
-
-        ShieldState::new()
     }
 }
 
-unsafe impl Sync for ShieldState {}
+unsafe impl<M: ReclaimableManager> Sync for ShieldState<M> {}
 
 impl<M: ReclaimableManager> Reclaimer for Ebr<M> {
-    type ShieldState = ShieldState;
+    type ShieldState = ShieldState<M>;
     type Reclaimable = M::Reclaimable;
 
     fn drop_shield(&self, _state: &mut Self::ShieldState) {

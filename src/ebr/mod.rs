@@ -109,7 +109,7 @@ impl<M: ReclaimableManager> Ebr<M> {
     }
 }
 
-pub struct ShieldState<M: ReclaimableManager>{
+pub struct ShieldState<M: ReclaimableManager> {
     thread_state: *const ThreadState<Ebr<M>>,
 }
 

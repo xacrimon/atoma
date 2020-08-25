@@ -34,7 +34,8 @@ impl Epoch {
     }
 
     pub fn next(self) -> Self {
-        let data = (self.unpinned().data + 1) % 4;
+        debug_assert!(!self.is_pinned());
+        let data = (self.data + 1) % 4;
         Self::from_raw(data)
     }
 }

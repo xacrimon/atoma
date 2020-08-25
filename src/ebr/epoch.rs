@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicU8, Ordering};
 
-const PIN_MASK: u8 = 0b00000001;
+const PIN_MASK: u8 = 0b10000000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Epoch {

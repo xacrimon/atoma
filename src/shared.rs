@@ -2,6 +2,7 @@ use crate::tag::{read_tag, set_tag, strip, Tag};
 use std::marker::PhantomData;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(transparent)]
 pub struct Shared<'shield, V, T>
 where
     V: 'shield,

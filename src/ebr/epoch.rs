@@ -76,7 +76,7 @@ impl AtomicEpoch {
             current_raw,
             next_raw,
             Ordering::AcqRel,
-            Ordering::AcqRel,
+            Ordering::Acquire,
         );
 
         if did_advance.is_ok() {

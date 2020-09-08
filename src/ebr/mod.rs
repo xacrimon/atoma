@@ -41,6 +41,10 @@ impl Collector {
         Shield::new(self)
     }
 
+    pub fn collect(&self) {
+        self.try_cycle();
+    }
+
     pub(crate) fn retire(&self, deferred: Deferred) {
         atomic::fence(Ordering::SeqCst);
         let item = UnsafeCell::new(MaybeUninit::new(deferred));
@@ -71,7 +75,7 @@ impl Collector {
         }
     }
 
-    unsafe fn collect(&self, epoch: Epoch, replace: bool) {
+    unsafe fn internal_collect(&self, epoch: Epoch, replace: bool) {
         let raw_epoch = epoch.into_raw() as usize;
 
         let new_queue_ptr = if replace {
@@ -120,7 +124,7 @@ impl EbrState for Collector {
             let safe_epoch = epoch.next();
 
             unsafe {
-                self.collect(safe_epoch, true);
+                self.internal_collect(safe_epoch, true);
             }
         }
     }
@@ -135,10 +139,10 @@ impl Default for Collector {
 impl Drop for Collector {
     fn drop(&mut self) {
         unsafe {
-            self.collect(Epoch::ZERO, false);
-            self.collect(Epoch::ONE, false);
-            self.collect(Epoch::TWO, false);
-            self.collect(Epoch::THREE, false);
+            self.internal_collect(Epoch::ZERO, false);
+            self.internal_collect(Epoch::ONE, false);
+            self.internal_collect(Epoch::TWO, false);
+            self.internal_collect(Epoch::THREE, false);
         }
     }
 }

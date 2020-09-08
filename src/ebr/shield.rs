@@ -25,6 +25,12 @@ impl<'collector> Shield<'collector> {
     }
 }
 
+impl<'collector> Clone for Shield<'collector> {
+    fn clone(&self) -> Self {
+        Self::new(self.collector)
+    }
+}
+
 impl<'collector> Drop for Shield<'collector> {
     fn drop(&mut self) {
         unsafe {

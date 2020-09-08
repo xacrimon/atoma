@@ -1,7 +1,5 @@
 use std::{
-    iter,
-    mem,
-    ptr,
+    iter, mem, ptr,
     sync::atomic::{AtomicPtr, AtomicUsize, Ordering},
 };
 
@@ -19,7 +17,7 @@ impl<T> Queue<T> {
     pub fn new() -> Self {
         Self {
             head: AtomicPtr::new(ptr::null_mut()),
-            len: AtomicUsize::new(0)
+            len: AtomicUsize::new(0),
         }
     }
 

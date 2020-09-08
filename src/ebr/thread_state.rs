@@ -89,8 +89,7 @@ impl<G: EbrState> ThreadState<G> {
                 debug_assert_eq!(Epoch::ZERO, previous_epoch);
                 atomic::compiler_fence(Ordering::SeqCst);
             } else {
-                self.epoch.store(new_epoch, Ordering::Relaxed);
-                atomic::fence(Ordering::SeqCst);
+                self.epoch.store(new_epoch, Ordering::SeqCst);
             }
         }
     }
@@ -105,7 +104,7 @@ impl<G: EbrState> ThreadState<G> {
         atomic_cell.set(previous_shields - 1);
 
         if previous_shields == 1 {
-            self.epoch.store(Epoch::ZERO, Ordering::Relaxed);
+            self.epoch.store(Epoch::ZERO, Ordering::Release);
 
             if self.should_advance(state) {
                 state.try_cycle();

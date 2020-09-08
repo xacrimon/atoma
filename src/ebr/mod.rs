@@ -6,7 +6,7 @@ mod thread_state;
 use crate::{deferred::Deferred, thread_local::ThreadLocal};
 use epoch::{AtomicEpoch, Epoch};
 use queue::Queue;
-pub use shield::Shield;
+pub use shield::{CowShield, Shield};
 use std::{
     cell::UnsafeCell,
     mem::MaybeUninit,

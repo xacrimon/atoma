@@ -1,17 +1,12 @@
-mod atomic_ebr_ext;
 mod epoch;
 mod queue;
+mod shield;
 mod thread_state;
 
-pub use atomic_ebr_ext::AtomicEbrExt;
-
-use crate::{
-    shield::{CloneShield, Shield},
-    thread_local::ThreadLocal,
-    ReclaimableManager, Reclaimer,
-};
+use crate::{deferred::Deferred, thread_local::ThreadLocal};
 use epoch::{AtomicEpoch, Epoch};
 use queue::Queue;
+pub use shield::Shield;
 use std::{
     cell::UnsafeCell,
     mem::MaybeUninit,
@@ -22,45 +17,53 @@ use thread_state::{EbrState, ThreadState};
 
 type TypedQueue<T> = Queue<UnsafeCell<MaybeUninit<T>>>;
 
-pub struct Ebr<M: ReclaimableManager> {
-    epoch: AtomicEpoch,
-    threads: ThreadLocal<ThreadState<Self>>,
-    reclaimable_manager: M,
-    queues: [AtomicPtr<TypedQueue<M::Reclaimable>>; 4],
+fn new_queue<T>() -> *mut Queue<T> {
+    Box::into_raw(Box::new(Queue::new()))
 }
 
-impl<M: ReclaimableManager> Ebr<M> {
-    pub fn new(reclaimable_manager: M) -> Self {
+pub struct Collector {
+    global_epoch: AtomicEpoch,
+    threads: ThreadLocal<ThreadState<Self>>,
+    deferred: [AtomicPtr<TypedQueue<Deferred>>; Epoch::AMOUNT],
+}
+
+impl Collector {
+    pub fn new() -> Self {
         Self {
-            epoch: AtomicEpoch::new(Epoch::ZERO),
+            global_epoch: AtomicEpoch::new(Epoch::ZERO),
             threads: ThreadLocal::new(),
-            reclaimable_manager,
-            queues: [
-                AtomicPtr::new(Queue::new()),
-                AtomicPtr::new(Queue::new()),
-                AtomicPtr::new(Queue::new()),
-                AtomicPtr::new(Queue::new()),
+            deferred: [
+                AtomicPtr::new(new_queue()),
+                AtomicPtr::new(new_queue()),
+                AtomicPtr::new(new_queue()),
+                AtomicPtr::new(new_queue()),
             ],
         }
     }
 
-    pub fn shield(&self) -> Shield<'_, Self> {
-        unsafe {
-            let thread_state = self.thread_state();
-            thread_state.enter(&self);
-            let state = ShieldState::new(thread_state);
-            Shield::new(&self, state)
-        }
+    pub fn shield(&self) -> Shield {
+        Shield::new(self)
     }
 
-    fn get_queue(&self, epoch: Epoch) -> &TypedQueue<M::Reclaimable> {
+    pub fn collect(&self) {
+        self.try_cycle();
+    }
+
+    pub(crate) fn retire(&self, deferred: Deferred) {
+        atomic::fence(Ordering::SeqCst);
+        let item = UnsafeCell::new(MaybeUninit::new(deferred));
+        let epoch = self.global_epoch.load(Ordering::Relaxed);
+        self.get_queue(epoch).push(item);
+    }
+
+    fn get_queue(&self, epoch: Epoch) -> &TypedQueue<Deferred> {
         let raw_epoch = epoch.into_raw() as usize;
-        let atomic_queue = unsafe { self.queues.get_unchecked(raw_epoch) };
+        let atomic_queue = unsafe { self.deferred.get_unchecked(raw_epoch) };
         unsafe { &*atomic_queue.load(Ordering::Acquire) }
     }
 
     fn try_advance(&self) -> Result<Epoch, ()> {
-        let global_epoch = self.epoch.load(Ordering::Relaxed);
+        let global_epoch = self.global_epoch.load(Ordering::Relaxed);
 
         let can_collect = self
             .threads
@@ -70,94 +73,52 @@ impl<M: ReclaimableManager> Ebr<M> {
             .all(|epoch| epoch.unpinned() == global_epoch);
 
         if can_collect {
-            self.epoch.try_advance(global_epoch)
+            self.global_epoch.try_advance(global_epoch)
         } else {
             Err(())
         }
     }
 
-    unsafe fn collect(&self, epoch: Epoch, replace: bool) {
+    unsafe fn internal_collect(&self, epoch: Epoch, replace: bool) {
         let raw_epoch = epoch.into_raw() as usize;
 
         let new_queue_ptr = if replace {
-            Queue::new()
+            new_queue()
         } else {
             ptr::null_mut()
         };
 
         let old_queue_ptr = self
-            .queues
+            .deferred
             .get_unchecked(raw_epoch)
             .swap(new_queue_ptr, Ordering::AcqRel);
 
-        let mut maybe_queue = Some(&*old_queue_ptr);
+        let maybe_queue = Some(&*old_queue_ptr);
 
-        while let Some(queue) = maybe_queue {
+        if let Some(queue) = maybe_queue {
             for cell in queue.iter() {
-                let object = ptr::read(cell.get() as *mut M::Reclaimable);
-                self.reclaimable_manager.reclaim(object)
+                let deferred = ptr::read(cell.get() as *mut Deferred);
+                deferred.call();
             }
-
-            maybe_queue = queue.get_next();
         }
 
         Box::from_raw(old_queue_ptr);
     }
 
-    fn thread_state(&self) -> &ThreadState<Self> {
+    pub(crate) fn thread_state(&self) -> &ThreadState<Self> {
         self.threads.get(|| ThreadState::new(&self))
     }
 }
 
-pub struct ShieldState<M: ReclaimableManager> {
-    thread_state: *const ThreadState<Ebr<M>>,
-}
-
-impl<M: ReclaimableManager> ShieldState<M> {
-    fn new(thread_state: &ThreadState<Ebr<M>>) -> Self {
-        Self { thread_state }
-    }
-}
-
-impl<M: ReclaimableManager> CloneShield<Ebr<M>> for ShieldState<M> {
-    fn clone_shield(&self, reclaimer: &Ebr<M>) -> Self {
-        unsafe {
-            let thread_state = &*self.thread_state;
-            thread_state.enter(reclaimer);
-            Self::new(thread_state)
-        }
-    }
-}
-
-unsafe impl<M: ReclaimableManager> Sync for ShieldState<M> {}
-
-impl<M: ReclaimableManager> Reclaimer for Ebr<M> {
-    type ShieldState = ShieldState<M>;
-    type Reclaimable = M::Reclaimable;
-
-    fn drop_shield(&self, _state: &mut Self::ShieldState) {
-        unsafe {
-            self.thread_state().exit(&self);
-        }
-    }
-
-    fn retire(&self, _state: &Self::ShieldState, param: Self::Reclaimable) {
-        atomic::fence(Ordering::SeqCst);
-        let item = UnsafeCell::new(MaybeUninit::new(param));
-        let epoch = self.epoch.load(Ordering::Relaxed);
-        self.get_queue(epoch).push(item);
-    }
-}
-
-impl<M: ReclaimableManager> EbrState for Ebr<M> {
+impl EbrState for Collector {
     fn load_epoch_relaxed(&self) -> Epoch {
-        self.epoch.load(Ordering::Relaxed)
+        self.global_epoch.load(Ordering::Relaxed)
     }
 
     fn should_advance(&self) -> bool {
-        let epoch = self.epoch.load(Ordering::Acquire);
+        let epoch = self.global_epoch.load(Ordering::Acquire);
         let queue = self.get_queue(epoch);
-        queue.len() >= (queue.capacity() / 2)
+        queue.len() != 0
     }
 
     fn try_cycle(&self) {
@@ -165,19 +126,25 @@ impl<M: ReclaimableManager> EbrState for Ebr<M> {
             let safe_epoch = epoch.next();
 
             unsafe {
-                self.collect(safe_epoch, true);
+                self.internal_collect(safe_epoch, true);
             }
         }
     }
 }
 
-impl<M: ReclaimableManager> Drop for Ebr<M> {
+impl Default for Collector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Drop for Collector {
     fn drop(&mut self) {
         unsafe {
-            self.collect(Epoch::ZERO, false);
-            self.collect(Epoch::ONE, false);
-            self.collect(Epoch::TWO, false);
-            self.collect(Epoch::THREE, false);
+            self.internal_collect(Epoch::ZERO, false);
+            self.internal_collect(Epoch::ONE, false);
+            self.internal_collect(Epoch::TWO, false);
+            self.internal_collect(Epoch::THREE, false);
         }
     }
 }

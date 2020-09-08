@@ -20,7 +20,7 @@ where
     T: Tag,
 {
     pub fn null() -> Self {
-        Self::from_raw(0)
+        unsafe { Self::from_raw(0) }
     }
 
     /// # Safety
@@ -29,7 +29,12 @@ where
         Self::from_raw(ptr as usize)
     }
 
-    pub fn from_raw(data: usize) -> Self {
+    /// This function constructs a `Shared<'shield, V, T>` from a raw tagged pointer.
+    ///
+    /// # Safety
+    /// This is marked unsafe because extreme caution must be taken to
+    /// supply correct data and ensure the lifetime is what you expect.
+    pub unsafe fn from_raw(data: usize) -> Self {
         Self {
             data,
             _m0: PhantomData,
@@ -92,6 +97,6 @@ where
     pub fn with_tag(&self, tag: T) -> Self {
         let bits = tag.serialize();
         let data = set_tag::<T>(self.data, bits);
-        Self::from_raw(data)
+        unsafe { Self::from_raw(data) }
     }
 }

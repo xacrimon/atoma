@@ -1,158 +1,77 @@
 use std::{
-    cell::UnsafeCell,
-    cmp, iter,
-    mem::MaybeUninit,
-    ptr,
+    iter, mem, ptr,
     sync::atomic::{AtomicPtr, AtomicUsize, Ordering},
 };
 
-/// How many elements the queue segment has capacity for.
-const QUEUE_CAPACITY: usize = 14;
-
-/// A wait-free append-only queue used for storing garbage.
-///
-/// Does not call destructors on drop.
-pub struct Queue<T> {
-    /// The next free slot in the queue.
-    head: AtomicUsize,
-
-    /// A pointer to the next queue segment. This is null if there isn't one.
+struct Node<T> {
     next: AtomicPtr<Self>,
+    value: T,
+}
 
-    /// An array of nodes that may be occupied.
-    nodes: [UnsafeCell<MaybeUninit<T>>; QUEUE_CAPACITY],
+pub struct Queue<T> {
+    head: AtomicPtr<Node<T>>,
+    len: AtomicUsize,
 }
 
 impl<T> Queue<T> {
-    /// Create a new queue segment.
-    pub fn new() -> *mut Self {
-        #[allow(clippy::uninit_assumed_init)]
-        let nodes = unsafe { MaybeUninit::uninit().assume_init() };
-
-        Box::into_raw(Box::new(Self {
-            head: AtomicUsize::new(0),
-            next: AtomicPtr::new(ptr::null_mut()),
-            nodes,
-        }))
-    }
-
-    /// Push an item onto the queue.
-    pub fn push(&self, data: T) {
-        // release is needed so it synchronizes properly with the acquire load in `iter`
-        let slot = self.head.fetch_add(1, Ordering::Release);
-
-        if slot >= QUEUE_CAPACITY {
-            self.get_next_or_create().push(data);
-        } else {
-            unsafe {
-                let node_ptr = self.nodes.get_unchecked(slot).get();
-                ptr::write(node_ptr, MaybeUninit::new(data));
-            }
+    pub fn new() -> Self {
+        Self {
+            head: AtomicPtr::new(ptr::null_mut()),
+            len: AtomicUsize::new(0),
         }
     }
 
-    /// Iterate over all elements in this queue segment;
-    pub fn iter(&self) -> impl Iterator<Item = &T> {
-        // acquire is needed so it synchronizes properly with the increment in `push`
-        let top = self.head.load(Ordering::Acquire);
-        let mut slot = 0;
+    pub fn push(&self, value: T) {
+        let mut node = Box::new(Node {
+            next: AtomicPtr::new(ptr::null_mut()),
+            value,
+        });
 
-        iter::from_fn(move || {
-            if slot == top {
-                None
-            } else {
-                let node_ptr = unsafe { self.nodes.get_unchecked(slot).get() } as *mut T;
-                slot += 1;
-                Some(unsafe { &*node_ptr })
-            }
-        })
-    }
+        let node_ptr = &*node as *const Node<T> as *mut Node<T>;
 
-    /// How many elements there currently are in the queue segment.
-    /// This function loads the length using relaxed ordering and thus it may not be fully accurate
-    pub fn len(&self) -> usize {
-        cmp::min(self.head.load(Ordering::Relaxed), QUEUE_CAPACITY)
-    }
+        loop {
+            let prev_head = self.head.load(Ordering::Acquire);
+            *node.next.get_mut() = prev_head;
 
-    /// The maxmimum capacity of the queue segment.
-    pub fn capacity(&self) -> usize {
-        QUEUE_CAPACITY
-    }
-
-    /// Get a reference to the next queue segment if it exists.
-    pub fn get_next(&self) -> Option<&Self> {
-        // acquire is needed here so it synchronizes properly with the
-        // rmw in `get_next_or_create`
-        //
-        // the pointer must always pointer to a valid object or be null
-        unsafe { self.next.load(Ordering::Acquire).as_ref() }
-    }
-
-    /// Get a reference to the next queue segment, creating it if it doesn't exist
-    fn get_next_or_create(&self) -> &Self {
-        let mut next = self.next.load(Ordering::Acquire);
-
-        while next.is_null() {
-            let new_queue = Self::new();
-
-            // acq_rel is used here so the write becomes visible to the
-            // load in `get_next` and the drop implementation
-            let did_swap = self.next.compare_exchange_weak(
-                next,
-                new_queue,
-                Ordering::AcqRel,
-                Ordering::AcqRel,
-            );
-
-            if let Err(actual) = did_swap {
-                // drop the allocated queue segment
-                // we've previously allocated the segment with a box
-                // so it must be valid to drop it with a box
-                unsafe {
-                    Box::from_raw(new_queue);
-                }
-
-                // if the actual value is not null another thread has already created a queue segment for us
-                if !actual.is_null() {
-                    break;
-                }
-            } else {
-                next = new_queue;
+            if self
+                .head
+                .compare_and_swap(prev_head, node_ptr, Ordering::AcqRel)
+                == prev_head
+            {
+                self.len.fetch_add(1, Ordering::AcqRel);
+                mem::forget(node);
                 break;
             }
         }
+    }
 
-        // at this point `next` must point to a valid object
-        debug_assert!(!next.is_null());
-        unsafe { &*next }
+    pub fn len(&self) -> usize {
+        self.len.load(Ordering::Acquire)
+    }
+
+    pub fn iter<'a>(&'a self) -> impl Iterator<Item = &'a T> + 'a {
+        let mut next = self.head.load(Ordering::Acquire);
+
+        iter::from_fn(move || {
+            if next.is_null() {
+                None
+            } else {
+                let node = unsafe { &*next };
+                next = node.next.load(Ordering::Acquire);
+                Some(&node.value)
+            }
+        })
     }
 }
 
 impl<T> Drop for Queue<T> {
     fn drop(&mut self) {
-        // acquire needs to so that we synchronize with the rmw in `get_next_or_create`
-        // otherwise we may not find all the queue segments that have been allocated
-        let next_ptr = self.next.load(Ordering::Acquire);
+        let mut next = *self.head.get_mut();
 
-        if !next_ptr.is_null() {
-            // if `next_ptr` is not null it must point to a valid object
-            unsafe {
-                Box::from_raw(next_ptr);
-            }
+        while !next.is_null() {
+            let node = unsafe { &mut *next };
+            next = *node.next.get_mut();
+            unsafe { Box::from_raw(node) };
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::Queue;
-
-    #[test]
-    fn push_pop_eq() {
-        let queue_ptr = Queue::new();
-        let queue = unsafe { &*queue_ptr };
-        queue.push(495);
-        assert_eq!(queue.iter().count(), 1);
-        assert_eq!(queue.iter().next().copied(), Some(495));
     }
 }

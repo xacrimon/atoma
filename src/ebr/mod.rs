@@ -17,6 +17,10 @@ use thread_state::{EbrState, ThreadState};
 
 type TypedQueue<T> = Queue<UnsafeCell<MaybeUninit<T>>>;
 
+fn new_queue<T>() -> *mut Queue<T> {
+    Box::into_raw(Box::new(Queue::new()))
+}
+
 pub struct Collector {
     global_epoch: AtomicEpoch,
     threads: ThreadLocal<ThreadState<Self>>,
@@ -29,10 +33,10 @@ impl Collector {
             global_epoch: AtomicEpoch::new(Epoch::ZERO),
             threads: ThreadLocal::new(),
             deferred: [
-                AtomicPtr::new(Queue::new()),
-                AtomicPtr::new(Queue::new()),
-                AtomicPtr::new(Queue::new()),
-                AtomicPtr::new(Queue::new()),
+                AtomicPtr::new(new_queue()),
+                AtomicPtr::new(new_queue()),
+                AtomicPtr::new(new_queue()),
+                AtomicPtr::new(new_queue()),
             ],
         }
     }
@@ -79,7 +83,7 @@ impl Collector {
         let raw_epoch = epoch.into_raw() as usize;
 
         let new_queue_ptr = if replace {
-            Queue::new()
+            new_queue()
         } else {
             ptr::null_mut()
         };
@@ -89,15 +93,13 @@ impl Collector {
             .get_unchecked(raw_epoch)
             .swap(new_queue_ptr, Ordering::AcqRel);
 
-        let mut maybe_queue = Some(&*old_queue_ptr);
+        let maybe_queue = Some(&*old_queue_ptr);
 
-        while let Some(queue) = maybe_queue {
+        if let Some(queue) = maybe_queue {
             for cell in queue.iter() {
                 let deferred = ptr::read(cell.get() as *mut Deferred);
                 deferred.call();
             }
-
-            maybe_queue = queue.get_next();
         }
 
         Box::from_raw(old_queue_ptr);
@@ -116,7 +118,7 @@ impl EbrState for Collector {
     fn should_advance(&self) -> bool {
         let epoch = self.global_epoch.load(Ordering::Acquire);
         let queue = self.get_queue(epoch);
-        queue.len() >= (queue.capacity() / 2)
+        queue.len() != 0
     }
 
     fn try_cycle(&self) {

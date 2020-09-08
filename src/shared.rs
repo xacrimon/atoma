@@ -29,6 +29,11 @@ where
         Self::from_raw(ptr as usize)
     }
 
+    /// This function constructs a `Shared<'shield, V, T>` from a raw tagged pointer.
+    ///
+    /// # Safety
+    /// This is marked unsafe because extreme caution must be taken to
+    /// supply correct data and ensure the lifetime is what you expect.
     pub unsafe fn from_raw(data: usize) -> Self {
         Self {
             data,

@@ -37,7 +37,7 @@ impl Collector {
         }
     }
 
-    pub fn shield<'collector>(&'collector self) -> Shield<'collector> {
+    pub fn shield(&self) -> Shield {
         Shield::new(self)
     }
 
@@ -123,6 +123,12 @@ impl EbrState for Collector {
                 self.collect(safe_epoch, true);
             }
         }
+    }
+}
+
+impl Default for Collector {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

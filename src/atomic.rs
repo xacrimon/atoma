@@ -29,6 +29,9 @@ impl<V, T> Atomic<V, T>
 where
     T: Tag,
 {
+    /// # Safety
+    /// Marked unsafe because this is not usually what the user wants.
+    /// `Atomic::null` should be preferred when possible.
     pub unsafe fn from_raw(raw: usize) -> Self {
         Self {
             data: AtomicUsize::new(raw),
@@ -42,7 +45,10 @@ where
     }
 
     pub fn null_vec(len: usize) -> Vec<Self> {
-        unsafe { mem::transmute(vec![0; len]) }
+        unsafe {
+            #[allow(clippy::unsound_collection_transmute)]
+            mem::transmute(vec![0_usize; len])
+        }
     }
 
     pub fn load<'shield>(

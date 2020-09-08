@@ -12,10 +12,6 @@ documentation = "https://docs.rs/flize"
 keywords = ["atomic", "concurrent", "memory", "epoch", "reclamation"]
 categories = ["concurrency", "algorithms", "data-structures"]
 
-[features]
-default = ["ebr"]
-ebr = []
-
 [dependencies]
 generic-array = "0.14.4"
 once_cell = { version = "1.4.0" }

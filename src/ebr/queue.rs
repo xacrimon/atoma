@@ -71,7 +71,7 @@ impl<T> Queue<T> {
     /// How many elements there currently are in the queue segment.
     /// This function loads the length using relaxed ordering and thus it may not be fully accurate
     pub fn len(&self) -> usize {
-        cmp::min(self.head.load(Ordering::Relaxed), QUEUE_CAPACITY)
+        cmp::min(self.head.load(Ordering::Acquire), QUEUE_CAPACITY)
     }
 
     /// The maxmimum capacity of the queue segment.

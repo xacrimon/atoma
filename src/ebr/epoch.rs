@@ -1,23 +1,24 @@
-use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-const PIN_MASK: u8 = 0b10000000;
+const PIN_MASK: usize = 0b10000000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Epoch {
-    data: u8,
+    data: usize,
 }
 
 impl Epoch {
+    pub const AMOUNT: usize = 4;
     pub const ZERO: Self = Self::from_raw(0);
     pub const ONE: Self = Self::from_raw(1);
     pub const TWO: Self = Self::from_raw(2);
     pub const THREE: Self = Self::from_raw(3);
 
-    const fn from_raw(data: u8) -> Self {
+    const fn from_raw(data: usize) -> Self {
         Self { data }
     }
 
-    pub fn into_raw(self) -> u8 {
+    pub fn into_raw(self) -> usize {
         self.data
     }
 
@@ -41,13 +42,13 @@ impl Epoch {
 }
 
 pub struct AtomicEpoch {
-    raw: AtomicU8,
+    raw: AtomicUsize,
 }
 
 impl AtomicEpoch {
     pub fn new(epoch: Epoch) -> Self {
         Self {
-            raw: AtomicU8::new(epoch.into_raw()),
+            raw: AtomicUsize::new(epoch.into_raw()),
         }
     }
 

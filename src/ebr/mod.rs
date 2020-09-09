@@ -50,7 +50,6 @@ impl Collector {
     }
 
     pub(crate) fn retire(&self, deferred: Deferred) {
-        atomic::fence(Ordering::SeqCst);
         let item = UnsafeCell::new(MaybeUninit::new(deferred));
         let epoch = self.global_epoch.load(Ordering::Relaxed);
         self.get_queue(epoch).push(item);

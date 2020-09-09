@@ -94,7 +94,7 @@ impl<T: Send + Sync> ThreadLocal<T> {
 
                 if self
                     .table
-                    .compare_exchange_weak(
+                    .compare_exchange(
                         old_table_ptr,
                         new_table_ptr,
                         Ordering::AcqRel,

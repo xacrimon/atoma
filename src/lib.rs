@@ -1,6 +1,7 @@
 mod atomic;
 mod deferred;
 mod ebr;
+mod rcu;
 mod shared;
 mod tag;
 mod thread_local;

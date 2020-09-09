@@ -11,7 +11,7 @@ use std::{
     cell::UnsafeCell,
     mem::MaybeUninit,
     ptr,
-    sync::atomic::{self, AtomicPtr, Ordering},
+    sync::atomic::{AtomicPtr, Ordering},
 };
 use thread_state::{EbrState, ThreadState};
 

@@ -11,3 +11,4 @@ panic = "abort"
 
 [dependencies]
 flize = { path = ".." }
+crossbeam-epoch = "0.8.2"

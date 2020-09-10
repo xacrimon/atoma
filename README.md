@@ -5,6 +5,8 @@ flize implements epoch-based reclamation with less restrictions than `crossbeam-
 A primary goal of this crate so to have a very rusty API and
 to have clear and simple source code.
 
+Please note that there are still many performance optimizations we have not implemented yet.
+
 Furthermore as made evident in the testing benchmarks flize is significantly
 less vulnerable hitting cases of unoptimized behaviour and unacceptable usage of memory than crossbeam-epoch.
 In our testing flize is much more consistent in resource usage than crossbeam-epoch.

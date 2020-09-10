@@ -5,7 +5,9 @@ authors = ["Acrimon <joel.wejdenstal@gmail.com>"]
 edition = "2018"
 
 [profile.release]
-debug = true
+codegen-units = 1
+lto = "fat"
+panic = "abort"
 
 [dependencies]
 flize = { path = ".." }

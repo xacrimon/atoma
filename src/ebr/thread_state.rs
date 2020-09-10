@@ -33,12 +33,10 @@ pub struct ThreadState<G> {
 }
 
 impl<G: EbrState> ThreadState<G> {
-    pub fn new(state: &G) -> Self {
-        let global_epoch = state.load_epoch_relaxed();
-
+    pub fn new() -> Self {
         Self {
             shields: UnsafeCell::new(Cell::new(0)),
-            epoch: AtomicEpoch::new(global_epoch),
+            epoch: AtomicEpoch::new(Epoch::ZERO),
             advance_counter: UnsafeCell::new(Cell::new(0)),
             _m0: PhantomData,
         }

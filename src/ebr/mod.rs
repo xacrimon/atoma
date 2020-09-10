@@ -75,7 +75,7 @@ impl Collector {
     }
 
     pub(crate) fn thread_state(&self) -> &ThreadState<Self> {
-        self.threads.get(|| ThreadState::new(&self))
+        self.threads.get(|| ThreadState::new())
     }
 }
 

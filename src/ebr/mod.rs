@@ -6,7 +6,7 @@ use crate::drain_queue::DrainQueue;
 use crate::{deferred::Deferred, thread_local::ThreadLocal};
 use epoch::{AtomicEpoch, Epoch};
 pub use shield::{CowShield, Shield};
-use std::sync::atomic::{compiler_fence, Ordering};
+use std::sync::atomic::{fence, Ordering};
 use thread_state::{EbrState, ThreadState};
 
 pub struct Collector {
@@ -62,13 +62,12 @@ impl Collector {
 
     unsafe fn internal_collect(&self, epoch: Epoch) {
         let mut queue = self.get_queue(epoch).swap_out();
+        fence(Ordering::SeqCst);
+        self.global_epoch.unpin_relaxed();
 
         while let Some(deferred) = queue.pop() {
             deferred.call();
         }
-
-        compiler_fence(Ordering::SeqCst);
-        self.global_epoch.unpin_seqcst();
     }
 
     pub(crate) fn thread_state(&self) -> &ThreadState<Self> {

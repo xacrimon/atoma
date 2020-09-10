@@ -64,8 +64,8 @@ impl AtomicEpoch {
         Epoch::from_raw(previous_raw)
     }
 
-    pub fn unpin_seqcst(&self) {
-        self.raw.fetch_and(!PIN_MASK, Ordering::SeqCst);
+    pub fn unpin_relaxed(&self) {
+        self.raw.fetch_and(!PIN_MASK, Ordering::Relaxed);
     }
 
     pub fn try_advance_and_pin(&self, current: Epoch) -> Result<Epoch, ()> {

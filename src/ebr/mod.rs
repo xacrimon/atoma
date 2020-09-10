@@ -45,12 +45,13 @@ impl Collector {
     fn try_advance(&self) -> Result<Epoch, ()> {
         let global_epoch = self.global_epoch.load(Ordering::Relaxed);
 
-        let can_collect = self
-            .threads
-            .iter()
-            .map(|state| state.load_epoch_relaxed())
-            .filter(|epoch| epoch.is_pinned())
-            .all(|epoch| epoch.unpinned() == global_epoch);
+        let can_collect = !global_epoch.is_pinned()
+            && self
+                .threads
+                .iter()
+                .map(|state| state.load_epoch_relaxed())
+                .filter(|epoch| epoch.is_pinned())
+                .all(|epoch| epoch.unpinned() == global_epoch);
 
         if can_collect {
             self.global_epoch.try_advance_and_pin(global_epoch)

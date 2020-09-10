@@ -19,6 +19,29 @@ impl<'collector> Shield<'collector> {
         }
     }
 
+    pub fn collector(&self) -> &'collector Collector {
+        self.collector
+    }
+
+    pub fn repin(&mut self) {
+        unsafe {
+            self.collector.thread_state().exit(self.collector);
+            self.collector.thread_state().enter(self.collector);
+        }
+    }
+
+    pub fn repin_after<F, R>(&mut self, f: F) -> R
+    where
+        F: FnOnce() -> R,
+    {
+        unsafe {
+            self.collector.thread_state().exit(self.collector);
+            let value = f();
+            self.collector.thread_state().enter(self.collector);
+            value
+        }
+    }
+
     pub fn retire<F: FnOnce() + 'collector>(&self, f: F) {
         let deferred = Deferred::new(f);
         self.collector.retire(deferred);

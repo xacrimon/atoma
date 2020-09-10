@@ -1,7 +1,7 @@
 mod atomic;
 mod deferred;
+mod drain_queue;
 mod ebr;
-mod rcu;
 mod shared;
 mod tag;
 mod thread_local;

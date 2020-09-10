@@ -1,5 +1,6 @@
 mod atomic;
 mod deferred;
+mod drain_queue;
 mod ebr;
 mod shared;
 mod tag;

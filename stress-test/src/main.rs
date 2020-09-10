@@ -1,34 +1,26 @@
 use flize::Collector;
-use std::{sync::{Arc, Barrier}, thread};
+use std::{
+    sync::{Arc, Barrier},
+    thread,
+    time::{Duration, Instant},
+};
 
-const ITER: usize = 1 << 12;
+const ITER: usize = 1 << 11;
+const THREADS: usize = 8;
 
-fn reclaim_single_thread() {
-    let collector = Collector::new();
+fn reclaim_multi_thread(collector: Arc<Collector>) {
+    let barrier = Arc::new(Barrier::new(THREADS + 1));
 
-    for _ in 0..ITER {
-        let shield = collector.shield();
-        
-        for _ in 0..ITER {
-            shield.retire(|| ());
-        }
-    }
-}
-
-fn reclaim_multi_thread() {
-    let collector = Arc::new(Collector::new());
-    let barrier = Arc::new(Barrier::new(9));
-
-    for _ in 0..8 {
+    for _ in 0..THREADS {
         let collector = Arc::clone(&collector);
         let barrier = Arc::clone(&barrier);
 
         thread::spawn(move || {
             barrier.wait();
-            
+
             for _ in 0..ITER {
                 let shield = collector.shield();
-                
+
                 for _ in 0..ITER {
                     shield.retire(|| ());
                 }
@@ -43,6 +35,18 @@ fn reclaim_multi_thread() {
 }
 
 fn main() {
-    reclaim_single_thread();
-    reclaim_multi_thread();
+    let start = Instant::now();
+    let collector = Arc::new(Collector::new());
+    let mut x = 0;
+
+    while start.elapsed() < Duration::from_secs(60) {
+        x += 1;
+        reclaim_multi_thread(Arc::clone(&collector));
+    }
+
+    println!(
+        "called retire {} times in {} milliseconds",
+        x * THREADS * ITER,
+        start.elapsed().as_millis()
+    );
 }

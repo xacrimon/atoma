@@ -8,11 +8,8 @@ pub struct Epoch {
 }
 
 impl Epoch {
-    pub const AMOUNT: usize = 4;
+    pub const AMOUNT: usize = 3;
     pub const ZERO: Self = Self::from_raw(0);
-    pub const ONE: Self = Self::from_raw(1);
-    pub const TWO: Self = Self::from_raw(2);
-    pub const THREE: Self = Self::from_raw(3);
 
     const fn from_raw(data: usize) -> Self {
         Self { data }
@@ -36,7 +33,7 @@ impl Epoch {
 
     pub fn next(self) -> Self {
         debug_assert!(!self.is_pinned());
-        let data = (self.data + 1) % 4;
+        let data = (self.data + 1) % Self::AMOUNT;
         Self::from_raw(data)
     }
 }
@@ -76,7 +73,7 @@ impl AtomicEpoch {
             current_raw,
             next_raw,
             Ordering::AcqRel,
-            Ordering::Acquire,
+            Ordering::Relaxed,
         );
 
         if did_advance.is_ok() {

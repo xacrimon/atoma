@@ -1,43 +1,28 @@
 mod epoch;
-mod queue;
 mod shield;
 mod thread_state;
 
+use crate::drain_queue::DrainQueue;
 use crate::{deferred::Deferred, thread_local::ThreadLocal};
 use epoch::{AtomicEpoch, Epoch};
-use queue::Queue;
 pub use shield::{CowShield, Shield};
-use std::{
-    cell::UnsafeCell,
-    mem::MaybeUninit,
-    ptr,
-    sync::atomic::{self, AtomicPtr, Ordering},
-};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use thread_state::{EbrState, ThreadState};
-
-type TypedQueue<T> = Queue<UnsafeCell<MaybeUninit<T>>>;
-
-fn new_queue<T>() -> *mut Queue<T> {
-    Box::into_raw(Box::new(Queue::new()))
-}
 
 pub struct Collector {
     global_epoch: AtomicEpoch,
+    pinned: AtomicUsize,
     threads: ThreadLocal<ThreadState<Self>>,
-    deferred: [AtomicPtr<TypedQueue<Deferred>>; Epoch::AMOUNT],
+    deferred: [DrainQueue<Deferred>; Epoch::AMOUNT],
 }
 
 impl Collector {
     pub fn new() -> Self {
         Self {
             global_epoch: AtomicEpoch::new(Epoch::ZERO),
+            pinned: AtomicUsize::new(0),
             threads: ThreadLocal::new(),
-            deferred: [
-                AtomicPtr::new(new_queue()),
-                AtomicPtr::new(new_queue()),
-                AtomicPtr::new(new_queue()),
-                AtomicPtr::new(new_queue()),
-            ],
+            deferred: [DrainQueue::new(), DrainQueue::new(), DrainQueue::new()],
         }
     }
 
@@ -50,16 +35,13 @@ impl Collector {
     }
 
     pub(crate) fn retire(&self, deferred: Deferred) {
-        atomic::fence(Ordering::SeqCst);
-        let item = UnsafeCell::new(MaybeUninit::new(deferred));
         let epoch = self.global_epoch.load(Ordering::Relaxed);
-        self.get_queue(epoch).push(item);
+        self.get_queue(epoch).push(deferred);
     }
 
-    fn get_queue(&self, epoch: Epoch) -> &TypedQueue<Deferred> {
-        let raw_epoch = epoch.into_raw() as usize;
-        let atomic_queue = unsafe { self.deferred.get_unchecked(raw_epoch) };
-        unsafe { &*atomic_queue.load(Ordering::Acquire) }
+    fn get_queue(&self, epoch: Epoch) -> &DrainQueue<Deferred> {
+        let raw_epoch = epoch.into_raw();
+        unsafe { self.deferred.get_unchecked(raw_epoch) }
     }
 
     fn try_advance(&self) -> Result<Epoch, ()> {
@@ -70,7 +52,9 @@ impl Collector {
             .iter()
             .map(|state| state.load_epoch_relaxed())
             .filter(|epoch| epoch.is_pinned())
-            .all(|epoch| epoch.unpinned() == global_epoch);
+            .all(|epoch| {
+                epoch.unpinned() == global_epoch && self.pinned.load(Ordering::Acquire) == 0
+            });
 
         if can_collect {
             self.global_epoch.try_advance(global_epoch)
@@ -79,30 +63,15 @@ impl Collector {
         }
     }
 
-    unsafe fn internal_collect(&self, epoch: Epoch, replace: bool) {
-        let raw_epoch = epoch.into_raw() as usize;
+    unsafe fn internal_collect(&self, epoch: Epoch) {
+        self.pinned.fetch_add(1, Ordering::Release);
+        let mut queue = self.get_queue(epoch).swap_out();
 
-        let new_queue_ptr = if replace {
-            new_queue()
-        } else {
-            ptr::null_mut()
-        };
-
-        let old_queue_ptr = self
-            .deferred
-            .get_unchecked(raw_epoch)
-            .swap(new_queue_ptr, Ordering::AcqRel);
-
-        let maybe_queue = Some(&*old_queue_ptr);
-
-        if let Some(queue) = maybe_queue {
-            for cell in queue.iter() {
-                let deferred = ptr::read(cell.get() as *mut Deferred);
-                deferred.call();
-            }
+        while let Some(deferred) = queue.pop() {
+            deferred.call();
         }
 
-        Box::from_raw(old_queue_ptr);
+        self.pinned.fetch_sub(1, Ordering::Release);
     }
 
     pub(crate) fn thread_state(&self) -> &ThreadState<Self> {
@@ -126,7 +95,7 @@ impl EbrState for Collector {
             let safe_epoch = epoch.next();
 
             unsafe {
-                self.internal_collect(safe_epoch, true);
+                self.internal_collect(safe_epoch);
             }
         }
     }
@@ -138,13 +107,5 @@ impl Default for Collector {
     }
 }
 
-impl Drop for Collector {
-    fn drop(&mut self) {
-        unsafe {
-            self.internal_collect(Epoch::ZERO, false);
-            self.internal_collect(Epoch::ONE, false);
-            self.internal_collect(Epoch::TWO, false);
-            self.internal_collect(Epoch::THREE, false);
-        }
-    }
-}
+unsafe impl Send for Collector {}
+unsafe impl Sync for Collector {}

@@ -2,6 +2,9 @@
 
 flize implements epoch-based reclamation with less restrictions than `crossbeam-epoch`.
 
+A primary goal of this crate so to have a very rusty API and
+to have clear and simple source code.
+
 This crate is useful if you have resources that require destruction
 in a concurrent environment and you don't want to pay the price of locking.
 

@@ -39,7 +39,7 @@ fn main() {
     let collector = Arc::new(Collector::new());
     let mut x = 0;
 
-    while start.elapsed() < Duration::from_secs(20) {
+    while start.elapsed() < Duration::from_secs(60) {
         x += 1;
         reclaim_multi_thread(Arc::clone(&collector));
     }

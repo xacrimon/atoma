@@ -1,7 +1,6 @@
 use crate::tag::{read_tag, set_tag, strip, Tag};
 use std::marker::PhantomData;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct Shared<'shield, V, T>
 where
@@ -99,4 +98,38 @@ where
         let data = set_tag::<T>(self.data, bits);
         unsafe { Self::from_raw(data) }
     }
+}
+
+impl<'shield, V, T> Clone for Shared<'shield, V, T>
+where
+    V: 'shield,
+    T: Tag,
+{
+    fn clone(&self) -> Self {
+        unsafe { Self::from_raw(self.data) }
+    }
+}
+
+impl<'shield, V, T> Copy for Shared<'shield, V, T>
+where
+    V: 'shield,
+    T: Tag,
+{
+}
+
+impl<'shield, V, T> PartialEq for Shared<'shield, V, T>
+where
+    V: 'shield,
+    T: Tag,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.into_raw() == other.into_raw()
+    }
+}
+
+impl<'shield, V, T> Eq for Shared<'shield, V, T>
+where
+    V: 'shield,
+    T: Tag,
+{
 }

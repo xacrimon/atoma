@@ -85,7 +85,7 @@ fn main() {
 
         while start.elapsed() < Duration::from_secs(60) {
             x += 1;
-            flize(Arc::clone(&collector));
+            crossbeam_epoch(Arc::clone(&collector));
         }
 
         println!(

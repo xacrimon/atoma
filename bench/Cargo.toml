@@ -1,0 +1,14 @@
+[package]
+name = "stress-test"
+version = "0.1.0"
+authors = ["Acrimon <joel.wejdenstal@gmail.com>"]
+edition = "2018"
+
+[profile.release]
+codegen-units = 1
+lto = "fat"
+panic = "abort"
+
+[dependencies]
+flize = { path = ".." }
+crossbeam-epoch = "0.8.2"

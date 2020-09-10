@@ -6,7 +6,7 @@ use crate::drain_queue::DrainQueue;
 use crate::{deferred::Deferred, thread_local::ThreadLocal};
 use epoch::{AtomicEpoch, Epoch};
 pub use shield::{CowShield, Shield};
-use std::sync::atomic::{Ordering, compiler_fence};
+use std::sync::atomic::{compiler_fence, Ordering};
 use thread_state::{EbrState, ThreadState};
 
 pub struct Collector {
@@ -71,7 +71,7 @@ impl Collector {
     }
 
     pub(crate) fn thread_state(&self) -> &ThreadState<Self> {
-        self.threads.get(|| ThreadState::new())
+        self.threads.get(ThreadState::new)
     }
 }
 

@@ -84,31 +84,29 @@ impl<T> DrainQueue<T> {
     }
 
     pub fn pop(&mut self) -> Option<T> {
-        loop {
-            let lnode = self.head.load(Ordering::SeqCst);
+        let lnode = self.head.load(Ordering::SeqCst);
 
-            if lnode.is_null() {
-                break None;
+        if lnode.is_null() {
+            return None;
+        }
+
+        let lnode_ref = unsafe { &mut *lnode };
+        let idx_ref = lnode_ref.enqidx.get_mut();
+        *idx_ref = cmp::min(*idx_ref, BUFFER_SIZE - 1);
+        *idx_ref -= 1;
+        let idx = *idx_ref;
+
+        unsafe {
+            let item_ptr = (*lnode_ref.buffer[idx].as_ptr()).get();
+            let value = ptr::read(item_ptr);
+
+            if idx == 0 {
+                *self.head.get_mut() = *lnode_ref.next.get_mut();
+                Box::from_raw(lnode);
             }
 
-            let lnode_ref = unsafe { &mut *lnode };
-            let idx_ref = lnode_ref.enqidx.get_mut();
-            *idx_ref = cmp::min(*idx_ref, BUFFER_SIZE - 1);
-            *idx_ref -= 1;
-            let idx = *idx_ref;
-
-            unsafe {
-                let item_ptr = (*lnode_ref.buffer[idx].as_ptr()).get();
-                let value = ptr::read(item_ptr);
-
-                if idx == 0 {
-                    *self.head.get_mut() = *lnode_ref.next.get_mut();
-                    Box::from_raw(lnode);
-                }
-
-                self.len.fetch_sub(1, Ordering::SeqCst);
-                break Some(value);
-            }
+            self.len.fetch_sub(1, Ordering::SeqCst);
+            Some(value)
         }
     }
 
@@ -119,7 +117,7 @@ impl<T> DrainQueue<T> {
 
 impl<T> Drop for DrainQueue<T> {
     fn drop(&mut self) {
-        while let Some(_) = self.pop() {}
+        while self.pop().is_some() {}
     }
 }
 

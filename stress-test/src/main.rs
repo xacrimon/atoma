@@ -44,5 +44,9 @@ fn main() {
         reclaim_multi_thread(Arc::clone(&collector));
     }
 
-    println!("called retire {} times in {} milliseconds", x * THREADS * ITER, start.elapsed().as_millis());
+    println!(
+        "called retire {} times in {} milliseconds",
+        x * THREADS * ITER,
+        start.elapsed().as_millis()
+    );
 }

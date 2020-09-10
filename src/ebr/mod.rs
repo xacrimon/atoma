@@ -29,7 +29,9 @@ impl Collector {
     }
 
     pub fn collect(&self) {
-        self.try_cycle();
+        if self.should_advance() {
+            self.try_cycle();
+        }
     }
 
     pub(crate) fn retire(&self, deferred: Deferred) {
@@ -61,16 +63,12 @@ impl Collector {
     }
 
     unsafe fn internal_collect(&self, epoch: Epoch) {
-        let queue_current = self.get_queue(epoch);
+        let mut queue = self.get_queue(epoch).swap_out();
+        fence(Ordering::SeqCst);
+        self.global_epoch.unpin_relaxed();
 
-        if queue_current.len() != 0 {
-            let mut queue = queue_current.swap_out();
-            fence(Ordering::SeqCst);
-            self.global_epoch.unpin_relaxed();
-
-            while let Some(deferred) = queue.pop() {
-                deferred.call();
-            }
+        while let Some(deferred) = queue.pop() {
+            deferred.call();
         }
     }
 
@@ -92,7 +90,7 @@ impl EbrState for Collector {
 
     fn try_cycle(&self) {
         if let Ok(epoch) = self.try_advance() {
-            let safe_epoch = epoch.next();
+            let safe_epoch = epoch.unpinned().next();
 
             unsafe {
                 self.internal_collect(safe_epoch);

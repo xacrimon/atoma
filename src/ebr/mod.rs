@@ -61,12 +61,16 @@ impl Collector {
     }
 
     unsafe fn internal_collect(&self, epoch: Epoch) {
-        let mut queue = self.get_queue(epoch).swap_out();
-        fence(Ordering::SeqCst);
-        self.global_epoch.unpin_relaxed();
+        let queue_current = self.get_queue(epoch);
 
-        while let Some(deferred) = queue.pop() {
-            deferred.call();
+        if queue_current.len() != 0 {
+            let mut queue = queue_current.swap_out();
+            fence(Ordering::SeqCst);
+            self.global_epoch.unpin_relaxed();
+
+            while let Some(deferred) = queue.pop() {
+                deferred.call();
+            }
         }
     }
 

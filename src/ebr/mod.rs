@@ -6,12 +6,11 @@ use crate::drain_queue::DrainQueue;
 use crate::{deferred::Deferred, thread_local::ThreadLocal};
 use epoch::{AtomicEpoch, Epoch};
 pub use shield::{CowShield, Shield};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{compiler_fence, Ordering};
 use thread_state::{EbrState, ThreadState};
 
 pub struct Collector {
     global_epoch: AtomicEpoch,
-    pinned: AtomicUsize,
     threads: ThreadLocal<ThreadState<Self>>,
     deferred: [DrainQueue<Deferred>; Epoch::AMOUNT],
 }
@@ -20,7 +19,6 @@ impl Collector {
     pub fn new() -> Self {
         Self {
             global_epoch: AtomicEpoch::new(Epoch::ZERO),
-            pinned: AtomicUsize::new(0),
             threads: ThreadLocal::new(),
             deferred: [DrainQueue::new(), DrainQueue::new(), DrainQueue::new()],
         }
@@ -52,30 +50,28 @@ impl Collector {
             .iter()
             .map(|state| state.load_epoch_relaxed())
             .filter(|epoch| epoch.is_pinned())
-            .all(|epoch| {
-                epoch.unpinned() == global_epoch && self.pinned.load(Ordering::Acquire) == 0
-            });
+            .all(|epoch| epoch.unpinned() == global_epoch);
 
         if can_collect {
-            self.global_epoch.try_advance(global_epoch)
+            self.global_epoch.try_advance_and_pin(global_epoch)
         } else {
             Err(())
         }
     }
 
     unsafe fn internal_collect(&self, epoch: Epoch) {
-        self.pinned.fetch_add(1, Ordering::Release);
         let mut queue = self.get_queue(epoch).swap_out();
 
         while let Some(deferred) = queue.pop() {
             deferred.call();
         }
 
-        self.pinned.fetch_sub(1, Ordering::Release);
+        compiler_fence(Ordering::SeqCst);
+        self.global_epoch.unpin_seqcst();
     }
 
     pub(crate) fn thread_state(&self) -> &ThreadState<Self> {
-        self.threads.get(|| ThreadState::new(&self))
+        self.threads.get(ThreadState::new)
     }
 }
 

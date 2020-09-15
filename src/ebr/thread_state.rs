@@ -15,7 +15,7 @@ const ADVANCE_PROBABILITY: usize = 128;
 pub trait EbrState {
     fn load_epoch_relaxed(&self) -> Epoch;
     fn should_advance(&self) -> bool;
-    fn try_cycle(&self, shield: &Shield);
+    fn try_cycle(&self, shield: &Shield) -> bool;
     fn shield(&self) -> Shield;
 }
 

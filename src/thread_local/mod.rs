@@ -2,7 +2,10 @@ mod priority_queue;
 mod table;
 mod thread_id;
 
-use std::{sync::atomic::{AtomicPtr, Ordering, AtomicUsize}, marker::PhantomData};
+use std::{
+    marker::PhantomData,
+    sync::atomic::{AtomicPtr, AtomicUsize, Ordering},
+};
 use table::Table;
 
 /// A wrapper that keeps different instances of something per thread.
@@ -140,20 +143,20 @@ impl<'a, T: 'a> Iterator for Iter<'a, T> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.remaining == 0 {
-            return None
+            return None;
         };
 
         loop {
             let table = unsafe { &*self.table };
             let entries = &table.buckets;
-            
+
             while self.index < entries.len() {
                 let val = entries[self.index].load(Ordering::Acquire);
                 self.index += 1;
 
                 if !val.is_null() {
                     self.remaining -= 1;
-                    return unsafe { Some(&*val )};
+                    return unsafe { Some(&*val) };
                 }
             }
 

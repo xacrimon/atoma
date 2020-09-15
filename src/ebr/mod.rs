@@ -6,13 +6,16 @@ use crate::drain_queue::DrainQueue;
 use crate::{deferred::Deferred, thread_local::ThreadLocal};
 use epoch::{AtomicEpoch, Epoch};
 pub use shield::{CowShield, Shield};
-use std::sync::atomic::{fence, Ordering};
+use std::sync::atomic::{fence, Ordering, AtomicBool};
 use thread_state::{EbrState, ThreadState};
+
+const COLLECT_PRIORITY_LIMIT: usize = 1024;
 
 pub struct Collector {
     global_epoch: AtomicEpoch,
     threads: ThreadLocal<ThreadState<Self>>,
     deferred: [DrainQueue<Deferred>; Epoch::AMOUNT],
+    collect_priority: AtomicBool,
 }
 
 impl Collector {
@@ -21,6 +24,7 @@ impl Collector {
             global_epoch: AtomicEpoch::new(Epoch::ZERO),
             threads: ThreadLocal::new(),
             deferred: [DrainQueue::new(), DrainQueue::new(), DrainQueue::new()],
+            collect_priority: AtomicBool::new(false),
         }
     }
 
@@ -36,7 +40,13 @@ impl Collector {
 
     pub(crate) fn retire(&self, deferred: Deferred) {
         let epoch = self.global_epoch.load(Ordering::Relaxed);
-        self.get_queue(epoch).push(deferred);
+        let queue = self.get_queue(epoch);
+        let len = queue.len();
+        queue.push(deferred);
+
+        if len > COLLECT_PRIORITY_LIMIT {
+            self.collect_priority.store(true, Ordering::Relaxed);
+        }
     }
 
     fn get_queue(&self, epoch: Epoch) -> &DrainQueue<Deferred> {
@@ -64,6 +74,7 @@ impl Collector {
 
     unsafe fn internal_collect(&self, epoch: Epoch) {
         let mut queue = self.get_queue(epoch).swap_out();
+        self.collect_priority.store(false, Ordering::Relaxed);
         fence(Ordering::SeqCst);
         self.global_epoch.unpin_relaxed();
 

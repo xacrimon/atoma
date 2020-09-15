@@ -9,7 +9,8 @@ pub use shield::{CowShield, Shield};
 use std::{
     mem::MaybeUninit,
     ptr,
-    sync::atomic::{fence, AtomicIsize, Ordering},
+    sync::atomic::{fence, AtomicIsize, Ordering, AtomicUsize},
+    cmp,
 };
 use thread_state::{EbrState, ThreadState};
 
@@ -39,6 +40,7 @@ pub struct Collector {
     threads: ThreadLocal<ThreadState<Self>>,
     deferred: Queue<DeferredItem>,
     deferred_amount: AtomicIsize,
+    last_collected_amount: AtomicUsize,
 }
 
 impl Collector {
@@ -48,6 +50,7 @@ impl Collector {
             threads: ThreadLocal::new(),
             deferred: Queue::new(),
             deferred_amount: AtomicIsize::new(0),
+            last_collected_amount: AtomicUsize::new(0),
         }
     }
 
@@ -89,6 +92,8 @@ impl Collector {
 
     unsafe fn internal_collect(&self, epoch: Epoch, shield: &Shield) {
         fence(Ordering::SeqCst);
+        let last_collected_amount = self.last_collected_amount.load(Ordering::Relaxed);
+        let mut collected_amount = 0;
 
         while let Some(deferred) = self
             .deferred
@@ -96,11 +101,24 @@ impl Collector {
         {
             deferred.as_ref_unchecked().execute();
             self.deferred_amount.fetch_sub(1, Ordering::Relaxed);
+            collected_amount += 1;
         }
+
+        self.last_collected_amount.compare_and_swap(
+            last_collected_amount,
+            collected_amount,
+            Ordering::Relaxed,
+        );
     }
 
     pub(crate) fn thread_state(&self) -> &ThreadState<Self> {
         self.threads.get(ThreadState::new)
+    }
+
+    fn get_collect_threshold(&self) -> usize {
+        let last_collected_amount = self.last_collected_amount.load(Ordering::Relaxed);
+        let scaled_threshold = last_collected_amount / 4 * 3;
+        cmp::max(scaled_threshold, 4)
     }
 }
 
@@ -110,7 +128,9 @@ impl EbrState for Collector {
     }
 
     fn should_advance(&self) -> bool {
-        self.deferred_amount.load(Ordering::Relaxed) > 0
+        let deferred_amount = self.deferred_amount.load(Ordering::Relaxed);
+        let collect_threshold = self.get_collect_threshold() as isize;
+        deferred_amount > collect_threshold
     }
 
     fn try_cycle(&self, shield: &Shield) {

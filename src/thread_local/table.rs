@@ -9,8 +9,8 @@ use std::{
 /// this is implemented as a lookup table instead of a hash table.
 /// To allow incremental resizing we also store the previous table if any.
 pub struct Table<T> {
-    buckets: Box<[AtomicPtr<T>]>,
-    previous: Option<Box<Self>>,
+    pub(crate) buckets: Box<[AtomicPtr<T>]>,
+    pub previous: Option<Box<Self>>,
 }
 
 impl<T> Table<T> {
@@ -76,15 +76,6 @@ impl<T> Table<T> {
         self.previous.as_deref()
     }
 
-    /// Iterate over all entries in this and its child tables.
-    pub fn iter(&self) -> Iter<'_, T> {
-        Iter::Local(LocalTableIter {
-            table: self,
-            position: 0,
-            read_set: Vec::new(),
-        })
-    }
-
     pub unsafe fn drop_manual(&mut self, freed_set: &mut Vec<*mut T>) {
         if let Some(mut previous) = self.previous.take() {
             previous.drop_manual(freed_set);
@@ -98,72 +89,6 @@ impl<T> Table<T> {
                 // if it isn't null `ptr` must be pointing to a valid table
                 freed_set.push(ptr);
                 Box::from_raw(ptr);
-            }
-        }
-    }
-}
-
-/// An iterator over a table and its child tables.
-/// The iterator has 3 different possible states.
-/// - `Iter::Local` means it is iterator over the entries in the current table.
-/// - `Iter::Chain` means it is iterating over its child tables.
-/// - `Iter::Finished` means it has finished iterating over entries
-/// in the current table and there was no child table.
-pub enum Iter<'a, T> {
-    Local(LocalTableIter<'a, T>),
-    Chain(Box<Self>),
-    Finished,
-}
-
-impl<'a, T> Iterator for Iter<'a, T> {
-    type Item = &'a T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            Self::Local(iter) => {
-                if let Some(item) = iter.next() {
-                    Some(item)
-                } else if let Some(previous_table) = iter.table.previous() {
-                    *self = Self::Chain(Box::new(previous_table.iter()));
-                    self.next()
-                } else {
-                    *self = Self::Finished;
-                    None
-                }
-            }
-
-            Self::Chain(child_iter) => child_iter.next(),
-            Self::Finished => None,
-        }
-    }
-}
-
-pub struct LocalTableIter<'a, T> {
-    table: &'a Table<T>,
-    position: usize,
-    read_set: Vec<*mut T>,
-}
-
-impl<'a, T> Iterator for LocalTableIter<'a, T> {
-    type Item = &'a T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            if self.position == self.table.max_id() {
-                break None;
-            } else {
-                let key = self.position;
-                self.position += 1;
-
-                if let Some(ptr) = unsafe { self.table.get(key, Ordering::Acquire) } {
-                    if ptr.is_null() || self.read_set.contains(&ptr) {
-                        continue;
-                    } else {
-                        self.read_set.push(ptr);
-                    }
-
-                    break Some(unsafe { &*ptr });
-                }
             }
         }
     }

@@ -2,7 +2,7 @@ mod priority_queue;
 mod table;
 mod thread_id;
 
-use std::sync::atomic::{AtomicPtr, Ordering};
+use std::{sync::atomic::{AtomicPtr, Ordering, AtomicUsize}, marker::PhantomData};
 use table::Table;
 
 /// A wrapper that keeps different instances of something per thread.
@@ -12,6 +12,7 @@ use table::Table;
 /// There isn't a nice way to avoid this without compromising on performance.
 pub struct ThreadLocal<T: Send + Sync> {
     table: AtomicPtr<Table<T>>,
+    len: AtomicUsize,
 }
 
 impl<T: Send + Sync> ThreadLocal<T> {
@@ -21,6 +22,7 @@ impl<T: Send + Sync> ThreadLocal<T> {
 
         Self {
             table: AtomicPtr::new(table_ptr),
+            len: AtomicUsize::new(0),
         }
     }
 
@@ -34,13 +36,18 @@ impl<T: Send + Sync> ThreadLocal<T> {
 
         self.get_fast(id_usize).unwrap_or_else(|| {
             let data = Box::into_raw(Box::new(create()));
-            unsafe { self.insert(id_usize, data) }
+            unsafe { self.insert(id_usize, data, true) }
         })
     }
 
     /// Iterate over values.
-    pub fn iter(&self) -> impl Iterator<Item = &T> + '_ {
-        self.table(Ordering::Acquire).iter()
+    pub fn iter(&self) -> Iter<T> {
+        Iter {
+            remaining: self.len.load(Ordering::Acquire),
+            index: 0,
+            table: self.table(Ordering::Acquire),
+            _m0: PhantomData,
+        }
     }
 
     fn table(&self, order: Ordering) -> &Table<T> {
@@ -68,7 +75,7 @@ impl<T: Send + Sync> ThreadLocal<T> {
         while let Some(table) = current {
             if key <= table.max_id() {
                 if let Some(x) = unsafe { table.get_as_owner(key) } {
-                    return Some(unsafe { self.insert(key, x) });
+                    return Some(unsafe { self.insert(key, x, false) });
                 }
             }
 
@@ -82,7 +89,7 @@ impl<T: Send + Sync> ThreadLocal<T> {
     ///
     /// # Safety
     /// A key may not be inserted two times with the same top level table.
-    unsafe fn insert(&self, key: usize, data: *mut T) -> &T {
+    unsafe fn insert(&self, key: usize, data: *mut T, new: bool) -> &T {
         loop {
             let table = self.table(Ordering::Acquire);
 
@@ -111,7 +118,47 @@ impl<T: Send + Sync> ThreadLocal<T> {
             };
 
             actual_table.set(key, data);
+
+            if new {
+                self.len.fetch_add(1, Ordering::Release);
+            }
+
             break &*data;
+        }
+    }
+}
+
+pub struct Iter<'a, T> {
+    remaining: usize,
+    index: usize,
+    table: *const Table<T>,
+    _m0: PhantomData<&'a ()>,
+}
+
+impl<'a, T: 'a> Iterator for Iter<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.remaining == 0 {
+            return None
+        };
+
+        loop {
+            let table = unsafe { &*self.table };
+            let entries = &table.buckets;
+            
+            while self.index < entries.len() {
+                let val = entries[self.index].load(Ordering::Acquire);
+                self.index += 1;
+
+                if !val.is_null() {
+                    self.remaining -= 1;
+                    return unsafe { Some(&*val )};
+                }
+            }
+
+            self.index = 0;
+            self.table = table.previous().unwrap();
         }
     }
 }

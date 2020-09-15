@@ -13,6 +13,7 @@ pub trait EbrState {
     fn load_epoch_relaxed(&self) -> Epoch;
     fn should_advance(&self) -> bool;
     fn try_cycle(&self);
+    fn collect_priority(&self) -> bool;
 }
 
 /// Per thread state needed for the GC.
@@ -103,9 +104,10 @@ impl<G: EbrState> ThreadState<G> {
         atomic_cell.set(previous_shields - 1);
 
         if previous_shields == 1 {
+            let collect_priority = state.collect_priority();
             self.epoch.store(Epoch::ZERO, Ordering::Relaxed);
 
-            if self.should_advance(state) {
+            if self.should_advance(state) || collect_priority {
                 state.try_cycle();
             }
         }

@@ -6,7 +6,7 @@ use crate::drain_queue::DrainQueue;
 use crate::{deferred::Deferred, thread_local::ThreadLocal};
 use epoch::{AtomicEpoch, Epoch};
 pub use shield::{CowShield, Shield};
-use std::sync::atomic::{fence, Ordering, AtomicBool};
+use std::sync::atomic::{fence, AtomicBool, Ordering};
 use thread_state::{EbrState, ThreadState};
 
 const COLLECT_PRIORITY_LIMIT: usize = 1024;
@@ -107,6 +107,10 @@ impl EbrState for Collector {
                 self.internal_collect(safe_epoch);
             }
         }
+    }
+
+    fn collect_priority(&self) -> bool {
+        self.collect_priority.load(Ordering::Relaxed)
     }
 }
 

@@ -1,4 +1,7 @@
-use generic_array::{typenum::Unsigned, ArrayLength, GenericArray};
+use generic_array::{
+    typenum::{Unsigned, U0},
+    ArrayLength, GenericArray,
+};
 
 pub fn strip<T: Tag>(data: usize) -> usize {
     let mask: usize = usize::MAX >> <T::Size as Unsigned>::to_usize();
@@ -30,4 +33,19 @@ pub trait Tag {
 
     fn deserialize(bits: GenericArray<bool, Self::Size>) -> Self;
     fn serialize(self) -> GenericArray<bool, Self::Size>;
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct NullTag;
+
+impl Tag for NullTag {
+    type Size = U0;
+
+    fn deserialize(_bits: GenericArray<bool, Self::Size>) -> Self {
+        Self
+    }
+
+    fn serialize(self) -> GenericArray<bool, Self::Size> {
+        GenericArray::default()
+    }
 }

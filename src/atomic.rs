@@ -1,4 +1,4 @@
-use crate::{Shared, Shield, Tag};
+use crate::{NullTag, Shared, Shield, Tag};
 use std::{
     marker::PhantomData,
     mem,
@@ -16,7 +16,7 @@ where
 }
 
 #[repr(transparent)]
-pub struct Atomic<V, T>
+pub struct Atomic<V, T = NullTag>
 where
     T: Tag,
 {
@@ -38,6 +38,12 @@ where
             _m0: PhantomData,
             _m1: PhantomData,
         }
+    }
+
+    /// # Safety
+    /// The alignment of `V` must free up sufficient low bits so that `T` fits.
+    pub fn new(shared: Shared<'_, V, T>) -> Self {
+        unsafe { Self::from_raw(shared.into_raw()) }
     }
 
     pub fn null() -> Self {

@@ -1,4 +1,7 @@
-use super::epoch::{AtomicEpoch, Epoch};
+use super::{
+    epoch::{AtomicEpoch, Epoch},
+    Shield,
+};
 use std::{
     cell::{Cell, UnsafeCell},
     marker::PhantomData,
@@ -12,7 +15,8 @@ const ADVANCE_PROBABILITY: usize = 128;
 pub trait EbrState {
     fn load_epoch_relaxed(&self) -> Epoch;
     fn should_advance(&self) -> bool;
-    fn try_cycle(&self);
+    fn try_cycle(&self, shield: &Shield);
+    fn shield(&self) -> Shield;
 }
 
 /// Per thread state needed for the GC.
@@ -84,7 +88,7 @@ impl<G: EbrState> ThreadState<G> {
 
             if IS_X86 {
                 let previous_epoch = self.epoch.swap_seq_cst(new_epoch);
-                debug_assert_eq!(Epoch::ZERO, previous_epoch);
+                debug_assert_eq!(previous_epoch, Epoch::ZERO);
                 atomic::compiler_fence(Ordering::SeqCst);
             } else {
                 self.epoch.store(new_epoch, Ordering::Relaxed);
@@ -106,7 +110,8 @@ impl<G: EbrState> ThreadState<G> {
             self.epoch.store(Epoch::ZERO, Ordering::Relaxed);
 
             if self.should_advance(state) {
-                state.try_cycle();
+                let shield = state.shield();
+                state.try_cycle(&shield);
             }
         }
     }

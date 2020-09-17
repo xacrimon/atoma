@@ -2,17 +2,43 @@ mod epoch;
 mod shield;
 mod thread_state;
 
-use crate::drain_queue::DrainQueue;
+use crate::queue::Queue;
 use crate::{deferred::Deferred, thread_local::ThreadLocal};
 use epoch::{AtomicEpoch, Epoch};
 pub use shield::{CowShield, Shield};
-use std::sync::atomic::{fence, Ordering};
+use std::{
+    mem::MaybeUninit,
+    ptr,
+    sync::atomic::{fence, AtomicIsize, Ordering},
+};
 use thread_state::{EbrState, ThreadState};
+
+struct DeferredItem {
+    epoch: Epoch,
+    deferred: MaybeUninit<Deferred>,
+}
+
+impl DeferredItem {
+    fn new(epoch: Epoch, deferred: Deferred) -> Self {
+        Self {
+            epoch,
+            deferred: MaybeUninit::new(deferred),
+        }
+    }
+
+    unsafe fn execute(&self) {
+        ptr::read(&self.deferred).assume_init().call();
+    }
+}
+
+unsafe impl Send for DeferredItem {}
+unsafe impl Sync for DeferredItem {}
 
 pub struct Collector {
     global_epoch: AtomicEpoch,
     threads: ThreadLocal<ThreadState<Self>>,
-    deferred: [DrainQueue<Deferred>; Epoch::AMOUNT],
+    deferred: Queue<DeferredItem>,
+    deferred_amount: AtomicIsize,
 }
 
 impl Collector {
@@ -20,7 +46,8 @@ impl Collector {
         Self {
             global_epoch: AtomicEpoch::new(Epoch::ZERO),
             threads: ThreadLocal::new(),
-            deferred: [DrainQueue::new(), DrainQueue::new(), DrainQueue::new()],
+            deferred: Queue::new(),
+            deferred_amount: AtomicIsize::new(0),
         }
     }
 
@@ -29,46 +56,46 @@ impl Collector {
     }
 
     pub fn collect(&self) {
+        let shield = self.shield();
+
         if self.should_advance() {
-            self.try_cycle();
+            self.try_cycle(&shield);
         }
     }
 
-    pub(crate) fn retire(&self, deferred: Deferred) {
+    pub(crate) fn retire(&self, deferred: Deferred, shield: &Shield) {
         let epoch = self.global_epoch.load(Ordering::Relaxed);
-        self.get_queue(epoch).push(deferred);
-    }
-
-    fn get_queue(&self, epoch: Epoch) -> &DrainQueue<Deferred> {
-        let raw_epoch = epoch.into_raw();
-        unsafe { self.deferred.get_unchecked(raw_epoch) }
+        let deferred = DeferredItem::new(epoch, deferred);
+        self.deferred.push(deferred, shield);
+        self.deferred_amount.fetch_add(1, Ordering::Relaxed);
     }
 
     fn try_advance(&self) -> Result<Epoch, ()> {
         let global_epoch = self.global_epoch.load(Ordering::Relaxed);
 
-        let can_collect = !global_epoch.is_pinned()
-            && self
-                .threads
-                .iter()
-                .map(|state| state.load_epoch_relaxed())
-                .filter(|epoch| epoch.is_pinned())
-                .all(|epoch| epoch.unpinned() == global_epoch);
+        let can_collect = self
+            .threads
+            .iter()
+            .map(|state| state.load_epoch_relaxed())
+            .filter(|epoch| epoch.is_pinned())
+            .all(|epoch| epoch.unpinned() == global_epoch);
 
         if can_collect {
-            self.global_epoch.try_advance_and_pin(global_epoch)
+            self.global_epoch.try_advance(global_epoch)
         } else {
             Err(())
         }
     }
 
-    unsafe fn internal_collect(&self, epoch: Epoch) {
-        let mut queue = self.get_queue(epoch).swap_out();
+    unsafe fn internal_collect(&self, epoch: Epoch, shield: &Shield) {
         fence(Ordering::SeqCst);
-        self.global_epoch.unpin_relaxed();
 
-        while let Some(deferred) = queue.pop() {
-            deferred.call();
+        while let Some(deferred) = self
+            .deferred
+            .pop_if(|deferred| deferred.epoch == epoch, shield)
+        {
+            deferred.as_ref_unchecked().execute();
+            self.deferred_amount.fetch_sub(1, Ordering::Relaxed);
         }
     }
 
@@ -83,19 +110,21 @@ impl EbrState for Collector {
     }
 
     fn should_advance(&self) -> bool {
-        let epoch = self.global_epoch.load(Ordering::Acquire);
-        let queue = self.get_queue(epoch);
-        queue.len() != 0
+        self.deferred_amount.load(Ordering::Relaxed) > 0
     }
 
-    fn try_cycle(&self) {
+    fn try_cycle(&self, shield: &Shield) {
         if let Ok(epoch) = self.try_advance() {
-            let safe_epoch = epoch.unpinned().next();
+            let safe_epoch = epoch.next();
 
             unsafe {
-                self.internal_collect(safe_epoch);
+                self.internal_collect(safe_epoch, shield);
             }
         }
+    }
+
+    fn shield(&self) -> Shield {
+        self.shield()
     }
 }
 

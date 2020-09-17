@@ -44,7 +44,7 @@ impl<'collector> Shield<'collector> {
 
     pub fn retire<F: FnOnce() + 'collector>(&self, f: F) {
         let deferred = Deferred::new(f);
-        self.collector.retire(deferred);
+        self.collector.retire(deferred, self);
     }
 }
 

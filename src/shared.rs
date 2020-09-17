@@ -1,8 +1,8 @@
-use crate::tag::{read_tag, set_tag, strip, Tag};
+use crate::tag::{read_tag, set_tag, strip, NullTag, Tag};
 use std::marker::PhantomData;
 
 #[repr(transparent)]
-pub struct Shared<'shield, V, T>
+pub struct Shared<'shield, V, T = NullTag>
 where
     V: 'shield,
     T: Tag,

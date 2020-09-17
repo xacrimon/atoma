@@ -66,14 +66,14 @@ fn main() {
         let collector = Arc::new(flize::Collector::new());
         let mut x = 0;
 
-        while start.elapsed() < Duration::from_secs(60) {
+        while start.elapsed() < Duration::from_secs(30) {
             x += 1;
             flize(Arc::clone(&collector));
         }
 
         println!(
             "flize: called retire {} times in {} milliseconds",
-            x * THREADS * ITER,
+            x * THREADS * ITER * ITER,
             start.elapsed().as_millis()
         );
     }
@@ -83,14 +83,14 @@ fn main() {
         let collector = Arc::new(crossbeam_epoch::Collector::new());
         let mut x = 0;
 
-        while start.elapsed() < Duration::from_secs(60) {
+        while start.elapsed() < Duration::from_secs(30) {
             x += 1;
             crossbeam_epoch(Arc::clone(&collector));
         }
 
         println!(
             "crossbeam_epoch: called retire {} times in {} milliseconds",
-            x * THREADS * ITER,
+            x * THREADS * ITER * ITER,
             start.elapsed().as_millis()
         );
     }

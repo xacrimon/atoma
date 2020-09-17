@@ -40,7 +40,7 @@ dependencies = [
 
 [[package]]
 name = "flize"
-version = "3.1.0"
+version = "3.3.0"
 dependencies = [
  "generic-array",
  "once_cell",

@@ -64,13 +64,9 @@ impl AtomicEpoch {
         Epoch::from_raw(previous_raw)
     }
 
-    pub fn unpin_relaxed(&self) {
-        self.raw.fetch_and(!PIN_MASK, Ordering::Relaxed);
-    }
-
-    pub fn try_advance_and_pin(&self, current: Epoch) -> Result<Epoch, ()> {
+    pub fn try_advance(&self, current: Epoch) -> Result<Epoch, ()> {
         let current_raw = current.into_raw();
-        let next = current.next().pinned();
+        let next = current.next();
         let next_raw = next.into_raw();
 
         let did_advance = self.raw.compare_exchange_weak(

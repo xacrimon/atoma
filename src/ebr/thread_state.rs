@@ -2,14 +2,13 @@ use super::{
     epoch::{AtomicEpoch, Epoch},
     Shield,
 };
-use crate::CachePadded;
+use crate::{CachePadded, barrier::light_barrier};
 use std::{
     cell::{Cell, UnsafeCell},
     marker::PhantomData,
-    sync::atomic::{self, Ordering},
+    sync::atomic::Ordering,
 };
 
-const IS_X86: bool = cfg!(any(target_arch = "x86", target_arch = "x86_64"));
 const ADVANCE_PROBABILITY: usize = 128;
 
 /// The interface we need in order to work with the main GC state.
@@ -86,15 +85,9 @@ impl<G: EbrState> ThreadState<G> {
         if previous_shields == 0 {
             let global_epoch = state.load_epoch_relaxed();
             let new_epoch = global_epoch.pinned();
-
-            if IS_X86 {
-                let previous_epoch = self.epoch.swap_seq_cst(new_epoch);
-                debug_assert_eq!(previous_epoch, Epoch::ZERO);
-                atomic::compiler_fence(Ordering::SeqCst);
-            } else {
-                self.epoch.store(new_epoch, Ordering::Relaxed);
-                atomic::fence(Ordering::SeqCst);
-            }
+            self.epoch.store(new_epoch, Ordering::Relaxed);
+            light_barrier();
+            
         }
     }
 

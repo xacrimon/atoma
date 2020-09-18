@@ -1,34 +1,5 @@
-use std::sync::atomic::Ordering;
-
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-use std::{ptr, sync::atomic::AtomicUsize};
-
 #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
 use std::sync::atomic::fence;
-
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-thread_local! {
-    static BARRIER_DUMMY: AtomicUsize = AtomicUsize::new(0);
-}
-
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-fn get_dummy_value() -> usize {
-    static DUMMY_VALUE: usize = 420;
-    unsafe { ptr::read_volatile(&DUMMY_VALUE) }
-}
-
-pub fn barrier() {
-    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-    {
-        let dummy_value = get_dummy_value();
-        BARRIER_DUMMY.with(|barrier_dummy| barrier_dummy.swap(dummy_value, Ordering::SeqCst));
-    }
-
-    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
-    {
-        fence(Ordering::SeqCst);
-    }
-}
 
 #[cfg(target_os = "linux")]
 pub use linux::{light_barrier, strong_barrier};

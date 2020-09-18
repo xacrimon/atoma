@@ -2,7 +2,10 @@ mod epoch;
 mod shield;
 mod thread_state;
 
-use crate::{barrier::strong_barrier, deferred::Deferred, queue::Queue, thread_local::ThreadLocal, CachePadded};
+use crate::{
+    barrier::strong_barrier, deferred::Deferred, queue::Queue, thread_local::ThreadLocal,
+    CachePadded,
+};
 use epoch::{AtomicEpoch, Epoch};
 pub use shield::{CowShield, Shield};
 use std::{

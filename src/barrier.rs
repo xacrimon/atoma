@@ -1,6 +1,3 @@
-#[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
-use std::sync::atomic::fence;
-
 #[cfg(target_os = "linux")]
 pub use linux::{light_barrier, strong_barrier};
 

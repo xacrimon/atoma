@@ -2,7 +2,7 @@ use super::{
     epoch::{AtomicEpoch, Epoch},
     Shield,
 };
-use crate::{CachePadded, barrier::light_barrier};
+use crate::{barrier::light_barrier, CachePadded};
 use std::{
     cell::{Cell, UnsafeCell},
     marker::PhantomData,
@@ -87,7 +87,6 @@ impl<G: EbrState> ThreadState<G> {
             let new_epoch = global_epoch.pinned();
             self.epoch.store(new_epoch, Ordering::Relaxed);
             light_barrier();
-            
         }
     }
 

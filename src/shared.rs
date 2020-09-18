@@ -1,4 +1,5 @@
 use crate::tag::{read_tag, set_tag, strip, NullTag, Tag, TagPosition};
+use std::fmt::{self, Debug};
 use std::marker::PhantomData;
 
 #[repr(transparent)]
@@ -151,6 +152,41 @@ where
 }
 
 impl<'shield, V, T1, T2> Eq for Shared<'shield, V, T1, T2>
+where
+    V: 'shield,
+    T1: Tag,
+    T2: Tag,
+{
+}
+
+impl<'shield, V, T1, T2> Debug for Shared<'shield, V, T1, T2>
+where
+    V: 'shield,
+    T1: Tag,
+    T2: Tag,
+{
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        write!(formatter, "{:?}", self.data)
+    }
+}
+
+unsafe impl<'shield, V, T1, T2> Send for Shared<'shield, V, T1, T2>
+where
+    V: 'shield,
+    T1: Tag,
+    T2: Tag,
+{
+}
+
+unsafe impl<'shield, V, T1, T2> Sync for Shared<'shield, V, T1, T2>
+where
+    V: 'shield,
+    T1: Tag,
+    T2: Tag,
+{
+}
+
+impl<'shield, V, T1, T2> Unpin for Shared<'shield, V, T1, T2>
 where
     V: 'shield,
     T1: Tag,

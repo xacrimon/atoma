@@ -120,36 +120,40 @@ where
     }
 }
 
-impl<'shield, V, T> Clone for Shared<'shield, V, T>
+impl<'shield, V, T1, T2> Clone for Shared<'shield, V, T1, T2>
 where
     V: 'shield,
-    T: Tag,
+    T1: Tag,
+    T2: Tag,
 {
     fn clone(&self) -> Self {
         unsafe { Self::from_raw(self.data) }
     }
 }
 
-impl<'shield, V, T> Copy for Shared<'shield, V, T>
+impl<'shield, V, T1, T2> Copy for Shared<'shield, V, T1, T2>
 where
     V: 'shield,
-    T: Tag,
+    T1: Tag,
+    T2: Tag,
 {
 }
 
-impl<'shield, V, T> PartialEq for Shared<'shield, V, T>
+impl<'shield, V, T1, T2> PartialEq for Shared<'shield, V, T1, T2>
 where
     V: 'shield,
-    T: Tag,
+    T1: Tag,
+    T2: Tag,
 {
     fn eq(&self, other: &Self) -> bool {
         self.into_raw() == other.into_raw()
     }
 }
 
-impl<'shield, V, T> Eq for Shared<'shield, V, T>
+impl<'shield, V, T1, T2> Eq for Shared<'shield, V, T1, T2>
 where
     V: 'shield,
-    T: Tag,
+    T1: Tag,
+    T2: Tag,
 {
 }

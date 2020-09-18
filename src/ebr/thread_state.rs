@@ -2,6 +2,7 @@ use super::{
     epoch::{AtomicEpoch, Epoch},
     Shield,
 };
+use crate::CachePadded;
 use std::{
     cell::{Cell, UnsafeCell},
     marker::PhantomData,
@@ -27,7 +28,7 @@ pub struct ThreadState<G> {
     shields: UnsafeCell<Cell<u32>>,
 
     /// The local epoch of the thread.
-    epoch: AtomicEpoch,
+    epoch: CachePadded<AtomicEpoch>,
 
     /// A counter for periodically attempting to advance the epoch.
     advance_counter: UnsafeCell<Cell<usize>>,
@@ -40,7 +41,7 @@ impl<G: EbrState> ThreadState<G> {
     pub fn new() -> Self {
         Self {
             shields: UnsafeCell::new(Cell::new(0)),
-            epoch: AtomicEpoch::new(Epoch::ZERO),
+            epoch: CachePadded::new(AtomicEpoch::new(Epoch::ZERO)),
             advance_counter: UnsafeCell::new(Cell::new(0)),
             _m0: PhantomData,
         }

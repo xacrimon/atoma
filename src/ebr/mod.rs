@@ -2,14 +2,17 @@ mod epoch;
 mod shield;
 mod thread_state;
 
-use crate::{deferred::Deferred, queue::Queue, thread_local::ThreadLocal, CachePadded};
+use crate::{
+    barrier::strong_barrier, deferred::Deferred, queue::Queue, thread_local::ThreadLocal,
+    CachePadded,
+};
 use epoch::{AtomicEpoch, Epoch};
 pub use shield::{CowShield, Shield};
 use std::{
     cmp,
     mem::MaybeUninit,
     ptr,
-    sync::atomic::{fence, AtomicIsize, AtomicUsize, Ordering},
+    sync::atomic::{AtomicIsize, AtomicUsize, Ordering},
 };
 use thread_state::{EbrState, ThreadState};
 
@@ -109,7 +112,7 @@ impl Collector {
     }
 
     unsafe fn internal_collect(&self, epoch: Epoch, shield: &Shield) {
-        fence(Ordering::SeqCst);
+        strong_barrier();
         let collect_amount_heuristic = self.collect_amount_heuristic.load(Ordering::Relaxed);
         let mut collected_amount = 0;
 

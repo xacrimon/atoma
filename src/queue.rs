@@ -8,7 +8,10 @@ use std::{
 
 const BUFFER_SIZE: usize = 32;
 
-pub struct Queue<T> {
+pub struct Queue<T>
+where
+    T: Send + Sync,
+{
     head: Atomic<Node<T>>,
     tail: Atomic<Node<T>>,
 }

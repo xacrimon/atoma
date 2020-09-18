@@ -19,6 +19,8 @@ pub struct ThreadLocal<T: Send + Sync> {
 }
 
 impl<T: Send + Sync> ThreadLocal<T> {
+    #[cold]
+    #[inline(never)]
     pub fn new() -> Self {
         let table = Table::new(4, None);
         let table_ptr = Box::into_raw(Box::new(table));
@@ -30,6 +32,7 @@ impl<T: Send + Sync> ThreadLocal<T> {
     }
 
     /// Get the value for this thread or initialize it with the given function if it doesn't exist.
+    #[inline]
     pub fn get<F>(&self, create: F) -> &T
     where
         F: FnOnce() -> T,
@@ -44,6 +47,8 @@ impl<T: Send + Sync> ThreadLocal<T> {
     }
 
     /// Iterate over values.
+    #[cold]
+    #[inline(never)]
     pub fn iter(&self) -> Iter<T> {
         Iter {
             remaining: self.len.load(Ordering::Acquire),
@@ -53,11 +58,13 @@ impl<T: Send + Sync> ThreadLocal<T> {
         }
     }
 
+    #[inline]
     fn table(&self, order: Ordering) -> &Table<T> {
         unsafe { &*self.table.load(order) }
     }
 
     // Fast path, checks the top level table.
+    #[inline]
     fn get_fast(&self, key: usize) -> Option<&T> {
         let table = self.table(Ordering::Relaxed);
 
@@ -72,6 +79,8 @@ impl<T: Send + Sync> ThreadLocal<T> {
     }
 
     /// Slow path, searches tables recursively.
+    #[cold]
+    #[inline(never)]
     fn get_slow(&self, key: usize) -> Option<&T> {
         let mut current = Some(self.table(Ordering::Acquire));
 
@@ -92,6 +101,8 @@ impl<T: Send + Sync> ThreadLocal<T> {
     ///
     /// # Safety
     /// A key may not be inserted two times with the same top level table.
+    #[cold]
+    #[inline(never)]
     unsafe fn insert(&self, key: usize, data: *mut T, new: bool) -> &T {
         loop {
             let table = self.table(Ordering::Acquire);
@@ -141,6 +152,8 @@ pub struct Iter<'a, T> {
 impl<'a, T: 'a> Iterator for Iter<'a, T> {
     type Item = &'a T;
 
+    #[cold]
+    #[inline(never)]
     fn next(&mut self) -> Option<Self::Item> {
         if self.remaining == 0 {
             return None;
@@ -167,6 +180,8 @@ impl<'a, T: 'a> Iterator for Iter<'a, T> {
 }
 
 impl<T: Send + Sync> Drop for ThreadLocal<T> {
+    #[cold]
+    #[inline(never)]
     fn drop(&mut self) {
         let table_ptr = self.table.load(Ordering::Acquire);
 

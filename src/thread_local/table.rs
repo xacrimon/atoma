@@ -14,6 +14,8 @@ pub struct Table<T> {
 }
 
 impl<T> Table<T> {
+    #[cold]
+    #[inline(never)]
     pub fn new(max: usize, previous: Option<Box<Self>>) -> Self {
         fn init_empty_buckets<T>(amount: usize) -> Box<[AtomicPtr<T>]> {
             let unsync_buckets = vec![ptr::null_mut::<T>(); amount].into_boxed_slice();
@@ -27,6 +29,7 @@ impl<T> Table<T> {
     }
 
     /// Get the numerically largest thread id this table can store.
+    #[inline]
     pub fn max_id(&self) -> usize {
         self.buckets.len() - 1
     }
@@ -34,6 +37,7 @@ impl<T> Table<T> {
     /// # Safety
     /// - `key` must be below or equal to `self.max_id()`
     /// - `key` must be the id of the calling thread
+    #[inline]
     pub unsafe fn get_as_owner(&self, key: usize) -> Option<*mut T> {
         debug_assert_eq!(key, thread_id::get() as usize);
         self.get(key, Ordering::Relaxed)
@@ -41,6 +45,7 @@ impl<T> Table<T> {
 
     /// # Safety
     /// - `key` must be below or equal to `self.max_id()`
+    #[inline]
     unsafe fn get(&self, key: usize, order: Ordering) -> Option<*mut T> {
         debug_assert!(key <= self.max_id());
         let ptr = self.buckets.get_unchecked(key).load(order);
@@ -57,6 +62,8 @@ impl<T> Table<T> {
     /// - `key` must be below or equal to `self.max_id()`
     /// - `key` must be the id of the calling thread
     /// - `key` must not have been set earlier
+    #[cold]
+    #[inline(never)]
     pub unsafe fn set(&self, key: usize, ptr: *mut T) {
         debug_assert!(key <= self.max_id());
         debug_assert_eq!(key, thread_id::get() as usize);
@@ -72,10 +79,13 @@ impl<T> Table<T> {
         atomic.store(ptr, Ordering::Release);
     }
 
+    #[inline]
     pub fn previous(&self) -> Option<&Self> {
         self.previous.as_deref()
     }
 
+    #[cold]
+    #[inline(never)]
     pub unsafe fn drop_manual(&mut self, freed_set: &mut Vec<*mut T>) {
         if let Some(mut previous) = self.previous.take() {
             previous.drop_manual(freed_set);

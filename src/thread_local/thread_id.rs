@@ -17,6 +17,8 @@ struct IdAllocator {
 }
 
 impl IdAllocator {
+    #[cold]
+    #[inline(never)]
     fn new() -> Self {
         Self {
             limit: 0,
@@ -24,6 +26,8 @@ impl IdAllocator {
         }
     }
 
+    #[cold]
+    #[inline(never)]
     fn allocate(&mut self) -> u32 {
         self.free.pop().unwrap_or_else(|| {
             let id = self.limit;
@@ -32,6 +36,8 @@ impl IdAllocator {
         })
     }
 
+    #[cold]
+    #[inline(never)]
     fn deallocate(&mut self, id: u32) {
         self.free.push(id);
     }
@@ -42,6 +48,8 @@ static ID_ALLOCATOR: Lazy<Mutex<IdAllocator>> = Lazy::new(|| Mutex::new(IdAlloca
 struct ThreadId(u32);
 
 impl ThreadId {
+    #[cold]
+    #[inline(never)]
     fn new() -> Self {
         Self(ID_ALLOCATOR.lock().unwrap().allocate())
     }
@@ -49,6 +57,8 @@ impl ThreadId {
 
 /// Drop is implemented here because it's the only clean way to run code when a thread exits.
 impl Drop for ThreadId {
+    #[cold]
+    #[inline(never)]
     fn drop(&mut self) {
         ID_ALLOCATOR.lock().unwrap().deallocate(self.0);
     }
@@ -58,6 +68,7 @@ thread_local! {
     static THREAD_ID: ThreadId = ThreadId::new();
 }
 
+#[inline]
 pub fn get() -> u32 {
     THREAD_ID.with(|data| data.0)
 }

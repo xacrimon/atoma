@@ -71,10 +71,12 @@ pub struct NullTag;
 impl Tag for NullTag {
     type Size = U0;
 
+    #[inline]
     fn deserialize(_bits: GenericArray<bool, Self::Size>) -> Self {
         Self
     }
 
+    #[inline]
     fn serialize(self) -> GenericArray<bool, Self::Size> {
         GenericArray::default()
     }

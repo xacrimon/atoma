@@ -108,7 +108,6 @@ where
 
                 if self.cas_head(lhead, lnext, shield) {
                     shield.retire(move || unsafe {
-                        dbg!("retire node");
                         Box::from_raw(lhead.as_ptr());
                     })
                 }

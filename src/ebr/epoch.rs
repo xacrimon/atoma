@@ -11,26 +11,32 @@ impl Epoch {
     pub const AMOUNT: usize = 3;
     pub const ZERO: Self = Self::from_raw(0);
 
+    #[inline]
     const fn from_raw(data: usize) -> Self {
         Self { data }
     }
 
+    #[inline]
     pub fn into_raw(self) -> usize {
         self.data
     }
 
+    #[inline]
     pub fn is_pinned(self) -> bool {
         (self.data & PIN_MASK) != 0
     }
 
+    #[inline]
     pub fn pinned(self) -> Self {
         Self::from_raw(self.data | PIN_MASK)
     }
 
+    #[inline]
     pub fn unpinned(self) -> Self {
         Self::from_raw(self.data & !PIN_MASK)
     }
 
+    #[inline]
     pub fn next(self) -> Self {
         debug_assert!(!self.is_pinned());
         let data = (self.data + 1) % Self::AMOUNT;
@@ -43,21 +49,27 @@ pub struct AtomicEpoch {
 }
 
 impl AtomicEpoch {
+    #[inline]
     pub fn new(epoch: Epoch) -> Self {
         Self {
             raw: AtomicUsize::new(epoch.into_raw()),
         }
     }
 
+    #[inline]
     pub fn load(&self, order: Ordering) -> Epoch {
         let raw = self.raw.load(order);
         Epoch::from_raw(raw)
     }
+
+    #[inline]
     pub fn store(&self, epoch: Epoch, order: Ordering) {
         let raw = epoch.into_raw();
         self.raw.store(raw, order);
     }
 
+    #[cold]
+    #[inline(never)]
     pub fn try_advance(&self, current: Epoch) -> Result<Epoch, ()> {
         let current_raw = current.into_raw();
         let next = current.next();

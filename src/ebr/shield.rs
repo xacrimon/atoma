@@ -8,6 +8,7 @@ pub struct Shield<'collector> {
 }
 
 impl<'collector> Shield<'collector> {
+    #[inline]
     pub(crate) fn new(collector: &'collector Collector) -> Self {
         unsafe {
             collector.thread_state().enter(collector);
@@ -23,6 +24,8 @@ impl<'collector> Shield<'collector> {
         self.collector
     }
 
+    #[cold]
+    #[inline(never)]
     pub fn repin(&mut self) {
         unsafe {
             self.collector.thread_state().exit(self.collector);
@@ -30,6 +33,8 @@ impl<'collector> Shield<'collector> {
         }
     }
 
+    #[cold]
+    #[inline(never)]
     pub fn repin_after<F, R>(&mut self, f: F) -> R
     where
         F: FnOnce() -> R,
@@ -42,6 +47,7 @@ impl<'collector> Shield<'collector> {
         }
     }
 
+    #[inline]
     pub fn retire<F: FnOnce() + 'collector>(&self, f: F) {
         let deferred = Deferred::new(f);
         self.collector.retire(deferred, self);
@@ -49,12 +55,14 @@ impl<'collector> Shield<'collector> {
 }
 
 impl<'collector> Clone for Shield<'collector> {
+    #[inline]
     fn clone(&self) -> Self {
         Self::new(self.collector)
     }
 }
 
 impl<'collector> Drop for Shield<'collector> {
+    #[inline]
     fn drop(&mut self) {
         unsafe {
             self.collector.thread_state().exit(self.collector);
@@ -69,14 +77,17 @@ pub enum CowShield<'collector, 'shield> {
 }
 
 impl<'collector, 'shield> CowShield<'collector, 'shield> {
+    #[inline]
     pub fn new_owned(shield: Shield<'collector>) -> Self {
         Self::Owned(shield)
     }
 
+    #[inline]
     pub fn new_borrowed(shield: &'shield Shield<'collector>) -> Self {
         Self::Borrowed(shield)
     }
 
+    #[inline]
     pub fn into_owned(self) -> Shield<'collector> {
         match self {
             Self::Owned(shield) => shield,
@@ -84,6 +95,7 @@ impl<'collector, 'shield> CowShield<'collector, 'shield> {
         }
     }
 
+    #[inline]
     pub fn get(&self) -> &Shield<'collector> {
         match self {
             Self::Owned(shield) => shield,

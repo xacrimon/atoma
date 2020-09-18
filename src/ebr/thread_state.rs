@@ -55,6 +55,8 @@ impl<G: EbrState> ThreadState<G> {
     /// This function may only be called from the thread this state belongs to.
     /// This is due to the fact that it will access the thread-local
     /// counter without synchronization.
+    #[cold]
+    #[inline(never)]
     unsafe fn should_advance(&self, state: &G) -> bool {
         let advance_counter_cell = &*self.advance_counter.get();
         let previous_advance_counter = advance_counter_cell.get();
@@ -69,6 +71,7 @@ impl<G: EbrState> ThreadState<G> {
     }
 
     /// Get the local epoch of the given thread.
+    #[inline]
     pub fn load_epoch_relaxed(&self) -> Epoch {
         self.epoch.load(Ordering::Relaxed)
     }
@@ -77,6 +80,7 @@ impl<G: EbrState> ThreadState<G> {
     ///
     /// # Safety
     /// This function may only be called from the thread this state belongs to.
+    #[inline]
     pub unsafe fn enter(&self, state: &G) {
         let atomic_cell = &*self.shields.get();
         let previous_shields = atomic_cell.get();
@@ -94,6 +98,7 @@ impl<G: EbrState> ThreadState<G> {
     ///
     /// # Safety
     /// This function may only be called from the thread this state belongs to.
+    #[inline]
     pub unsafe fn exit(&self, state: &G) {
         let atomic_cell = &*self.shields.get();
         let previous_shields = atomic_cell.get();

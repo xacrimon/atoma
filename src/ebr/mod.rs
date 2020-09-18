@@ -22,6 +22,7 @@ struct DeferredItem {
 }
 
 impl DeferredItem {
+    #[inline]
     fn new(epoch: Epoch, deferred: Deferred) -> Self {
         Self {
             epoch,
@@ -29,6 +30,7 @@ impl DeferredItem {
         }
     }
 
+    #[inline]
     unsafe fn execute(&self) {
         ptr::read(&self.deferred).assume_init().call();
     }
@@ -46,6 +48,8 @@ pub struct Collector {
 }
 
 impl Collector {
+    #[cold]
+    #[inline(never)]
     pub fn new() -> Self {
         Self {
             threads: ThreadLocal::new(),
@@ -56,15 +60,20 @@ impl Collector {
         }
     }
 
+    #[inline]
     pub fn shield(&self) -> Shield {
         Shield::new(self)
     }
 
+    #[cold]
+    #[inline(never)]
     pub fn try_collect_light(&self) {
         let shield = self.shield();
         self.try_cycle(&shield);
     }
 
+    #[cold]
+    #[inline(never)]
     pub fn try_collect_all(&self) {
         let shield = self.shield();
         let mut failures = 0;
@@ -83,6 +92,7 @@ impl Collector {
         }
     }
 
+    #[inline]
     pub(crate) fn retire(&self, deferred: Deferred, shield: &Shield) {
         let epoch = self.global_epoch.load(Ordering::Relaxed);
         let deferred = DeferredItem::new(epoch, deferred);
@@ -94,6 +104,8 @@ impl Collector {
         }
     }
 
+    #[cold]
+    #[inline(never)]
     fn try_advance(&self) -> Result<Epoch, ()> {
         let global_epoch = self.global_epoch.load(Ordering::Relaxed);
 
@@ -111,6 +123,8 @@ impl Collector {
         }
     }
 
+    #[cold]
+    #[inline(never)]
     unsafe fn internal_collect(&self, epoch: Epoch, shield: &Shield) {
         strong_barrier();
         let collect_amount_heuristic = self.collect_amount_heuristic.load(Ordering::Relaxed);
@@ -134,35 +148,43 @@ impl Collector {
         }
     }
 
+    #[inline]
     pub(crate) fn thread_state(&self) -> &ThreadState<Self> {
         self.threads.get(ThreadState::new)
     }
 
+    #[inline]
     fn get_collect_threshold(&self) -> usize {
         let last_collected_amount = self.collect_amount_heuristic.load(Ordering::Relaxed);
         let scaled_threshold = last_collected_amount / 2;
         cmp::max(scaled_threshold, 4)
     }
 
+    #[inline]
     fn priority_collect(&self) -> bool {
         let deferred_amount = self.deferred_amount.load(Ordering::Relaxed);
         let last_collected_amount = self.collect_amount_heuristic.load(Ordering::Relaxed);
         let priority_threshold = last_collected_amount * 2;
-        deferred_amount > priority_threshold as isize
+        deferred_amount > cmp::max(priority_threshold, 16) as isize
     }
 }
 
 impl EbrState for Collector {
+    #[inline]
     fn load_epoch_relaxed(&self) -> Epoch {
         self.global_epoch.load(Ordering::Relaxed)
     }
 
+    #[cold]
+    #[inline(never)]
     fn should_advance(&self) -> bool {
         let deferred_amount = self.deferred_amount.load(Ordering::Relaxed);
         let collect_threshold = self.get_collect_threshold() as isize;
         deferred_amount > collect_threshold
     }
 
+    #[cold]
+    #[inline(never)]
     fn try_cycle(&self, shield: &Shield) -> bool {
         if let Ok(epoch) = self.try_advance() {
             let safe_epoch = epoch.next();
@@ -177,18 +199,23 @@ impl EbrState for Collector {
         }
     }
 
+    #[inline]
     fn shield(&self) -> Shield {
         self.shield()
     }
 }
 
 impl Default for Collector {
+    #[cold]
+    #[inline(never)]
     fn default() -> Self {
         Self::new()
     }
 }
 
 impl Drop for Collector {
+    #[cold]
+    #[inline(never)]
     fn drop(&mut self) {
         let shield = self.shield();
         while self.deferred.pop_if(|_| true, &shield).is_some() {}

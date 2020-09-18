@@ -6,6 +6,7 @@ mod linux {
     use once_cell::sync::Lazy;
     use std::sync::atomic::{compiler_fence, fence, Ordering};
 
+    #[inline]
     pub fn strong_barrier() {
         match *STRATEGY {
             Strategy::Membarrier => membarrier::barrier(),
@@ -13,6 +14,7 @@ mod linux {
         }
     }
 
+    #[inline]
     pub fn light_barrier() {
         match *STRATEGY {
             Strategy::Membarrier => compiler_fence(Ordering::SeqCst),
@@ -92,10 +94,12 @@ mod linux {
 mod fallback {
     use std::sync::atomic::{fence, Ordering};
 
+    #[inline]
     pub fn strong_barrier() {
         fence(Ordering::SeqCst);
     }
 
+    #[inline]
     pub fn light_barrier() {
         fence(Ordering::SeqCst);
     }

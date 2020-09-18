@@ -104,6 +104,23 @@ where
         unsafe { Shared::from_raw(old_raw) }
     }
 
+    pub fn compare_exchange<'shield>(
+        &self,
+        current: Shared<'_, V, T1, T2>,
+        new: Shared<'_, V, T1, T2>,
+        success: Ordering,
+        failure: Ordering,
+        _shield: &'shield Shield<'_>,
+    ) -> Result<Shared<'shield, V, T1, T2>, Shared<'shield, V, T1, T2>> {
+        let current_raw = current.into_raw();
+        let new_raw = new.into_raw();
+        let result = self
+            .data
+            .compare_exchange(current_raw, new_raw, success, failure);
+
+        map_both(result, |raw| unsafe { Shared::from_raw(raw) })
+    }
+
     pub fn compare_exchange_weak<'shield>(
         &self,
         current: Shared<'_, V, T1, T2>,

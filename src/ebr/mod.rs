@@ -58,11 +58,26 @@ impl Collector {
         Shield::new(self)
     }
 
-    pub fn collect(&self) {
+    pub fn try_collect_light(&self) {
         let shield = self.shield();
+        self.try_cycle(&shield);
+    }
 
-        if self.should_advance() {
-            self.try_cycle(&shield);
+    pub fn try_collect_all(&self) {
+        let shield = self.shield();
+        let mut failures = 0;
+        let mut left = Epoch::AMOUNT;
+
+        while left != 0 {
+            if self.try_cycle(&shield) {
+                left -= 1;
+            }
+
+            if failures > 10 {
+                break;
+            }
+
+            failures += 1;
         }
     }
 
@@ -146,13 +161,17 @@ impl EbrState for Collector {
         deferred_amount > collect_threshold
     }
 
-    fn try_cycle(&self, shield: &Shield) {
+    fn try_cycle(&self, shield: &Shield) -> bool {
         if let Ok(epoch) = self.try_advance() {
             let safe_epoch = epoch.next();
 
             unsafe {
                 self.internal_collect(safe_epoch, shield);
             }
+
+            true
+        } else {
+            false
         }
     }
 

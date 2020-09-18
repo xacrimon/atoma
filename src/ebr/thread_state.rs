@@ -9,7 +9,7 @@ use std::{
     sync::atomic::Ordering,
 };
 
-const ADVANCE_PROBABILITY: usize = 128;
+const ADVANCE_PROBABILITY: usize = 256;
 
 /// The interface we need in order to work with the main GC state.
 pub trait EbrState {

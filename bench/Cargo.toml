@@ -1,13 +1,21 @@
 [package]
-name = "stress-test"
+name = "bench"
 version = "0.1.0"
 authors = ["Acrimon <joel.wejdenstal@gmail.com>"]
 edition = "2018"
 
 [profile.release]
-codegen-units = 1
 lto = "fat"
+codegen-units = 1
+panic = "abort"
 
-[dependencies]
+[dev-dependencies]
+criterion = "0.3.3"
 flize = { path = ".." }
 crossbeam-epoch = "0.8.2"
+num_cpus = "1.13.0"
+jemallocator = "0.3.2"
+
+[[bench]]
+name = "pin"
+harness = false

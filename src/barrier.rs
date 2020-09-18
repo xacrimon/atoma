@@ -38,7 +38,7 @@ mod linux {
         #[allow(dead_code, non_camel_case_types)]
         enum membarrier_cmd {
             MEMBARRIER_CMD_QUERY = 0,
-            MEMBARRIER_CMD_GLOBAL = 1 << 0,
+            MEMBARRIER_CMD_GLOBAL = 1,
             MEMBARRIER_CMD_GLOBAL_EXPEDITED = 1 << 1,
             MEMBARRIER_CMD_REGISTER_GLOBAL_EXPEDITED = 1 << 2,
             MEMBARRIER_CMD_PRIVATE_EXPEDITED = 1 << 3,

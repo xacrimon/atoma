@@ -2,8 +2,7 @@ mod epoch;
 mod shield;
 mod thread_state;
 
-use crate::queue::Queue;
-use crate::{deferred::Deferred, thread_local::ThreadLocal};
+use crate::{deferred::Deferred, queue::Queue, thread_local::ThreadLocal, CachePadded};
 use epoch::{AtomicEpoch, Epoch};
 pub use shield::{CowShield, Shield};
 use std::{
@@ -36,21 +35,21 @@ unsafe impl Send for DeferredItem {}
 unsafe impl Sync for DeferredItem {}
 
 pub struct Collector {
-    global_epoch: AtomicEpoch,
     threads: ThreadLocal<ThreadState<Self>>,
     deferred: Queue<DeferredItem>,
-    deferred_amount: AtomicIsize,
-    collect_amount_heuristic: AtomicUsize,
+    global_epoch: CachePadded<AtomicEpoch>,
+    deferred_amount: CachePadded<AtomicIsize>,
+    collect_amount_heuristic: CachePadded<AtomicUsize>,
 }
 
 impl Collector {
     pub fn new() -> Self {
         Self {
-            global_epoch: AtomicEpoch::new(Epoch::ZERO),
             threads: ThreadLocal::new(),
             deferred: Queue::new(),
-            deferred_amount: AtomicIsize::new(0),
-            collect_amount_heuristic: AtomicUsize::new(0),
+            global_epoch: CachePadded::new(AtomicEpoch::new(Epoch::ZERO)),
+            deferred_amount: CachePadded::new(AtomicIsize::new(0)),
+            collect_amount_heuristic: CachePadded::new(AtomicUsize::new(0)),
         }
     }
 

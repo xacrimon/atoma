@@ -1,4 +1,4 @@
-use crate::{Atomic, Shared, Shield};
+use crate::{Atomic, CachePadded, Shared, Shield};
 use std::{
     cell::UnsafeCell,
     mem::{self, MaybeUninit},
@@ -12,8 +12,8 @@ pub struct Queue<T>
 where
     T: Send + Sync,
 {
-    head: Atomic<Node<T>>,
-    tail: Atomic<Node<T>>,
+    head: CachePadded<Atomic<Node<T>>>,
+    tail: CachePadded<Atomic<Node<T>>>,
 }
 
 impl<T> Queue<T>
@@ -24,8 +24,8 @@ where
         let sentinel = Node::new(None, 0);
 
         Self {
-            head: Atomic::new(sentinel),
-            tail: Atomic::new(sentinel),
+            head: CachePadded::new(Atomic::new(sentinel)),
+            tail: CachePadded::new(Atomic::new(sentinel)),
         }
     }
 
@@ -140,10 +140,10 @@ where
 }
 
 struct Node<T> {
-    enq_allocated: AtomicUsize,
-    enq_committed: AtomicIsize,
-    deqidx: AtomicUsize,
-    next: Atomic<Self>,
+    enq_allocated: CachePadded<AtomicUsize>,
+    enq_committed: CachePadded<AtomicIsize>,
+    deqidx: CachePadded<AtomicUsize>,
+    next: CachePadded<Atomic<Self>>,
     items: [Entry<T>; BUFFER_SIZE],
 }
 
@@ -158,10 +158,10 @@ impl<T> Node<T> {
         }
 
         let node = Self {
-            enq_allocated: AtomicUsize::new(enqidx),
-            enq_committed: AtomicIsize::new(enqidx as isize - 1),
-            deqidx: AtomicUsize::new(0),
-            next: Atomic::null(),
+            enq_allocated: CachePadded::new(AtomicUsize::new(enqidx)),
+            enq_committed: CachePadded::new(AtomicIsize::new(enqidx as isize - 1)),
+            deqidx: CachePadded::new(AtomicUsize::new(0)),
+            next: CachePadded::new(Atomic::null()),
             items: [
                 first_entry,
                 Entry::new(),

@@ -138,3 +138,24 @@ where
         map_both(result, |raw| unsafe { Shared::from_raw(raw) })
     }
 }
+
+unsafe impl<V, T1, T2> Send for Atomic<V, T1, T2>
+where
+    T1: Tag,
+    T2: Tag,
+{
+}
+
+unsafe impl<V, T1, T2> Sync for Atomic<V, T1, T2>
+where
+    T1: Tag,
+    T2: Tag,
+{
+}
+
+impl<V, T1, T2> Unpin for Atomic<V, T1, T2>
+where
+    T1: Tag,
+    T2: Tag,
+{
+}

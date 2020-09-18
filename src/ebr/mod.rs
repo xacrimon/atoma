@@ -148,7 +148,7 @@ impl Collector {
         let deferred_amount = self.deferred_amount.load(Ordering::Relaxed);
         let last_collected_amount = self.collect_amount_heuristic.load(Ordering::Relaxed);
         let priority_threshold = last_collected_amount * 2;
-        deferred_amount > priority_threshold as isize
+        deferred_amount > cmp::max(priority_threshold, 16) as isize
     }
 }
 

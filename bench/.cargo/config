@@ -1,2 +1,2 @@
 [build]
-rustflags = ["-Ctarget-cpu=native"]
+rustflags = ["-Ztls-model=local-exec", "-Ctarget-cpu=native"]

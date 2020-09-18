@@ -16,18 +16,21 @@ where
 }
 
 #[repr(transparent)]
-pub struct Atomic<V, T = NullTag>
+pub struct Atomic<V, T1 = NullTag, T2 = NullTag>
 where
-    T: Tag,
+    T1: Tag,
+    T2: Tag,
 {
     pub(crate) data: AtomicUsize,
     _m0: PhantomData<V>,
-    _m1: PhantomData<T>,
+    _m1: PhantomData<T1>,
+    _m2: PhantomData<T2>,
 }
 
-impl<V, T> Atomic<V, T>
+impl<V, T1, T2> Atomic<V, T1, T2>
 where
-    T: Tag,
+    T1: Tag,
+    T2: Tag,
 {
     /// # Safety
     /// Marked unsafe because this is not usually what the user wants.
@@ -37,12 +40,13 @@ where
             data: AtomicUsize::new(raw),
             _m0: PhantomData,
             _m1: PhantomData,
+            _m2: PhantomData,
         }
     }
 
     /// # Safety
     /// The alignment of `V` must free up sufficient low bits so that `T` fits.
-    pub fn new(shared: Shared<'_, V, T>) -> Self {
+    pub fn new(shared: Shared<'_, V, T1, T2>) -> Self {
         unsafe { Self::from_raw(shared.into_raw()) }
     }
 
@@ -61,14 +65,14 @@ where
         &self,
         ordering: Ordering,
         _shield: &'shield Shield<'_>,
-    ) -> Shared<'shield, V, T> {
+    ) -> Shared<'shield, V, T1, T2> {
         let raw = self.data.load(ordering);
         unsafe { Shared::from_raw(raw) }
     }
 
     pub fn store<'shield>(
         &self,
-        data: Shared<'_, V, T>,
+        data: Shared<'_, V, T1, T2>,
         ordering: Ordering,
         _shield: &'shield Shield<'_>,
     ) {
@@ -78,10 +82,10 @@ where
 
     pub fn swap<'shield>(
         &self,
-        new: Shared<'_, V, T>,
+        new: Shared<'_, V, T1, T2>,
         ordering: Ordering,
         _shield: &'shield Shield<'_>,
-    ) -> Shared<'shield, V, T> {
+    ) -> Shared<'shield, V, T1, T2> {
         let new_raw = new.into_raw();
         let old_raw = self.data.swap(new_raw, ordering);
         unsafe { Shared::from_raw(old_raw) }
@@ -89,11 +93,11 @@ where
 
     pub fn compare_and_swap<'shield>(
         &self,
-        current: Shared<'_, V, T>,
-        new: Shared<'_, V, T>,
+        current: Shared<'_, V, T1, T2>,
+        new: Shared<'_, V, T1, T2>,
         order: Ordering,
         _shield: &'shield Shield<'_>,
-    ) -> Shared<'shield, V, T> {
+    ) -> Shared<'shield, V, T1, T2> {
         let current_raw = current.into_raw();
         let new_raw = new.into_raw();
         let old_raw = self.data.compare_and_swap(current_raw, new_raw, order);
@@ -102,12 +106,12 @@ where
 
     pub fn compare_exchange_weak<'shield>(
         &self,
-        current: Shared<'_, V, T>,
-        new: Shared<'_, V, T>,
+        current: Shared<'_, V, T1, T2>,
+        new: Shared<'_, V, T1, T2>,
         success: Ordering,
         failure: Ordering,
         _shield: &'shield Shield<'_>,
-    ) -> Result<Shared<'shield, V, T>, Shared<'shield, V, T>> {
+    ) -> Result<Shared<'shield, V, T1, T2>, Shared<'shield, V, T1, T2>> {
         let current_raw = current.into_raw();
         let new_raw = new.into_raw();
         let result = self

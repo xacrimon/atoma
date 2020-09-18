@@ -1,22 +1,25 @@
-use crate::tag::{read_tag, set_tag, strip, NullTag, Tag};
+use crate::tag::{read_tag, set_tag, strip, NullTag, Tag, TagPosition};
 use std::marker::PhantomData;
 
 #[repr(transparent)]
-pub struct Shared<'shield, V, T = NullTag>
+pub struct Shared<'shield, V, T1 = NullTag, T2 = NullTag>
 where
     V: 'shield,
-    T: Tag,
+    T1: Tag,
+    T2: Tag,
 {
     pub(crate) data: usize,
     _m0: PhantomData<&'shield ()>,
     _m1: PhantomData<V>,
-    _m2: PhantomData<T>,
+    _m2: PhantomData<T1>,
+    _m3: PhantomData<T2>,
 }
 
-impl<'shield, V, T> Shared<'shield, V, T>
+impl<'shield, V, T1, T2> Shared<'shield, V, T1, T2>
 where
     V: 'shield,
-    T: Tag,
+    T1: Tag,
+    T2: Tag,
 {
     pub fn null() -> Self {
         unsafe { Self::from_raw(0) }
@@ -39,6 +42,7 @@ where
             _m0: PhantomData,
             _m1: PhantomData,
             _m2: PhantomData,
+            _m3: PhantomData,
         }
     }
 
@@ -47,7 +51,12 @@ where
     }
 
     pub fn as_ptr(&self) -> *mut V {
-        strip::<T>(self.data) as *mut V
+        self.data as *mut V
+    }
+
+    pub fn strip(&self) -> Self {
+        let data = strip::<T1, T2>(self.data);
+        unsafe { Self::from_raw(data) }
     }
 
     /// # Safety
@@ -88,14 +97,25 @@ where
         self.as_ptr().is_null()
     }
 
-    pub fn tag(&self) -> T {
-        let bits = read_tag::<T>(self.data);
+    pub fn tag_lo(&self) -> T1 {
+        let bits = read_tag::<T1>(self.data, TagPosition::Lo);
         Tag::deserialize(bits)
     }
 
-    pub fn with_tag(&self, tag: T) -> Self {
+    pub fn tag_hi(&self) -> T2 {
+        let bits = read_tag::<T2>(self.data, TagPosition::Hi);
+        Tag::deserialize(bits)
+    }
+
+    pub fn with_tag_lo(&self, tag: T1) -> Self {
         let bits = tag.serialize();
-        let data = set_tag::<T>(self.data, bits);
+        let data = set_tag::<T1>(self.data, bits, TagPosition::Lo);
+        unsafe { Self::from_raw(data) }
+    }
+
+    pub fn with_tag_hi(&self, tag: T2) -> Self {
+        let bits = tag.serialize();
+        let data = set_tag::<T2>(self.data, bits, TagPosition::Hi);
         unsafe { Self::from_raw(data) }
     }
 }

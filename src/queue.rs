@@ -235,6 +235,15 @@ mod tests {
     use super::Queue;
     use crate::Collector;
 
+    macro_rules! matches {
+        ($expression:expr, $( $pattern:pat )|+ $( if $guard: expr )?) => {
+            match $expression {
+                $( $pattern )|+ $( if $guard )? => true,
+                _ => false
+            }
+        }
+    }
+
     #[test]
     fn push_pop_check() {
         let collector = Collector::new();

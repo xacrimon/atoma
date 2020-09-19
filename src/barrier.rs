@@ -3,7 +3,7 @@ pub use linux::{light_barrier, strong_barrier};
 
 #[cfg(target_os = "linux")]
 mod linux {
-    use once_cell::sync::Lazy;
+    use lazy_static::lazy_static;
     use std::sync::atomic::{compiler_fence, fence, Ordering};
 
     #[inline]
@@ -27,13 +27,13 @@ mod linux {
         Fallback,
     }
 
-    static STRATEGY: Lazy<Strategy> = Lazy::new(|| {
-        if membarrier::is_supported() {
+    lazy_static! {
+        static ref STRATEGY: Strategy = if membarrier::is_supported() {
             Strategy::Membarrier
         } else {
             Strategy::Fallback
-        }
-    });
+        };
+    }
 
     mod membarrier {
         #[repr(i32)]

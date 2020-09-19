@@ -4,7 +4,7 @@
 //! instead of hash tables for storing thread-local data.
 
 use super::priority_queue::PriorityQueue;
-use once_cell::sync::Lazy;
+use lazy_static::lazy_static;
 use std::sync::Mutex;
 
 /// This structure allocates ids.
@@ -43,7 +43,9 @@ impl IdAllocator {
     }
 }
 
-static ID_ALLOCATOR: Lazy<Mutex<IdAllocator>> = Lazy::new(|| Mutex::new(IdAllocator::new()));
+lazy_static! {
+    static ref ID_ALLOCATOR: Mutex<IdAllocator> = Mutex::new(IdAllocator::new());
+}
 
 struct ThreadId(u32);
 

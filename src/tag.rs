@@ -12,8 +12,8 @@ pub enum TagPosition {
 impl TagPosition {
     fn to_skip<T: Tag>(&self) -> usize {
         match self {
-            Self::Lo => 0,
-            Self::Hi => {
+            TagPosition::Lo => 0,
+            TagPosition::Hi => {
                 let usize_bits = mem::size_of::<usize>() * 8;
                 usize_bits - <T::Size as Unsigned>::to_usize()
             }
@@ -22,8 +22,8 @@ impl TagPosition {
 }
 
 pub fn strip<T1: Tag, T2: Tag>(data: usize) -> usize {
-    let mask1: usize = usize::MAX >> <T1::Size as Unsigned>::to_usize();
-    let mask2: usize = usize::MAX << <T2::Size as Unsigned>::to_usize();
+    let mask1: usize = std::usize::MAX >> <T1::Size as Unsigned>::to_usize();
+    let mask2: usize = std::usize::MAX << <T2::Size as Unsigned>::to_usize();
     data & mask1 & mask2
 }
 

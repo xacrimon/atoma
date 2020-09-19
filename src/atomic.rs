@@ -56,7 +56,6 @@ where
 
     pub fn null_vec(len: usize) -> Vec<Self> {
         unsafe {
-            #[allow(clippy::unsound_collection_transmute)]
             mem::transmute(vec![0_usize; len])
         }
     }

@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-const PIN_MASK: usize = 0b10000000;
+const PIN_MASK: usize = 0b1000_0000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Epoch {

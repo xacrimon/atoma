@@ -81,7 +81,7 @@ impl<T> Table<T> {
 
     #[inline]
     pub fn previous(&self) -> Option<&Self> {
-        self.previous.as_deref()
+        self.previous.as_ref().map(|t| &**t)
     }
 
     #[cold]

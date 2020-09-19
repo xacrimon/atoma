@@ -1,9 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use std::{sync::Arc, thread};
 
-#[global_allocator]
-static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
-
 const COUNT: usize = 1 << 24;
 
 fn crossbeam_epoch() {

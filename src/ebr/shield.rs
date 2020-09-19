@@ -79,27 +79,27 @@ pub enum CowShield<'collector, 'shield> {
 impl<'collector, 'shield> CowShield<'collector, 'shield> {
     #[inline]
     pub fn new_owned(shield: Shield<'collector>) -> Self {
-        Self::Owned(shield)
+        CowShield::Owned(shield)
     }
 
     #[inline]
     pub fn new_borrowed(shield: &'shield Shield<'collector>) -> Self {
-        Self::Borrowed(shield)
+        CowShield::Borrowed(shield)
     }
 
     #[inline]
     pub fn into_owned(self) -> Shield<'collector> {
         match self {
-            Self::Owned(shield) => shield,
-            Self::Borrowed(shield) => shield.clone(),
+            CowShield::Owned(shield) => shield,
+            CowShield::Borrowed(shield) => shield.clone(),
         }
     }
 
     #[inline]
     pub fn get(&self) -> &Shield<'collector> {
         match self {
-            Self::Owned(shield) => shield,
-            Self::Borrowed(shield) => shield,
+            CowShield::Owned(shield) => shield,
+            CowShield::Borrowed(shield) => shield,
         }
     }
 }

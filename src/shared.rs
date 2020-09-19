@@ -51,11 +51,11 @@ where
         self.data
     }
 
-    pub fn as_ptr(&self) -> *mut V {
+    pub fn as_ptr(self) -> *mut V {
         self.data as *mut V
     }
 
-    pub fn strip(&self) -> Self {
+    pub fn strip(self) -> Self {
         let data = strip::<T1, T2>(self.data);
         unsafe { Self::from_raw(data) }
     }
@@ -63,14 +63,14 @@ where
     /// # Safety
     /// - The pointer must either be null or point to a valid instance of `V`.
     /// - You must ensure the instance of `V` is not borrowed mutably.
-    pub unsafe fn as_ref(&self) -> Option<&'shield V> {
+    pub unsafe fn as_ref(self) -> Option<&'shield V> {
         self.as_ptr().as_ref()
     }
 
     /// # Safety
     /// - The pointer must either be null or point to a valid instance of `V`.
     /// - You must ensure the instance of `V` is not borrowed.
-    pub unsafe fn as_mut_ref(&mut self) -> Option<&'shield mut V> {
+    pub unsafe fn as_mut_ref(self) -> Option<&'shield mut V> {
         let ptr = self.as_ptr();
 
         if !ptr.is_null() {
@@ -83,38 +83,38 @@ where
     /// # Safety
     /// - The pointer must point to a valid instance of `V`.
     /// - You must ensure the instance of `V` is not borrowed mutably.
-    pub unsafe fn as_ref_unchecked(&self) -> &'shield V {
+    pub unsafe fn as_ref_unchecked(self) -> &'shield V {
         &*self.as_ptr()
     }
 
     /// # Safety
     /// - The pointer must point to a valid instance of `V`.
     /// - You must ensure the instance of `V` is not borrowed.
-    pub unsafe fn as_mut_ref_unchecked(&mut self) -> &'shield mut V {
+    pub unsafe fn as_mut_ref_unchecked(self) -> &'shield mut V {
         &mut *self.as_ptr()
     }
 
-    pub fn is_null(&self) -> bool {
+    pub fn is_null(self) -> bool {
         self.as_ptr().is_null()
     }
 
-    pub fn tag_lo(&self) -> T1 {
+    pub fn tag_lo(self) -> T1 {
         let bits = read_tag::<T1>(self.data, TagPosition::Lo);
         Tag::deserialize(bits)
     }
 
-    pub fn tag_hi(&self) -> T2 {
+    pub fn tag_hi(self) -> T2 {
         let bits = read_tag::<T2>(self.data, TagPosition::Hi);
         Tag::deserialize(bits)
     }
 
-    pub fn with_tag_lo(&self, tag: T1) -> Self {
+    pub fn with_tag_lo(self, tag: T1) -> Self {
         let bits = tag.serialize();
         let data = set_tag::<T1>(self.data, bits, TagPosition::Lo);
         unsafe { Self::from_raw(data) }
     }
 
-    pub fn with_tag_hi(&self, tag: T2) -> Self {
+    pub fn with_tag_hi(self, tag: T2) -> Self {
         let bits = tag.serialize();
         let data = set_tag::<T2>(self.data, bits, TagPosition::Hi);
         unsafe { Self::from_raw(data) }

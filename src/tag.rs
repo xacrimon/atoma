@@ -58,6 +58,24 @@ pub fn set_tag<T: Tag>(
     data
 }
 
+/// The `Tag` trait represents any struct that can be serialized
+/// and packed into the unused bits of a pointer producing
+/// a so called "tagged" pointer.
+/// The amount of bits available are variable and the amount
+/// you can use depends on whether the tag is in in the low or high position.
+///
+/// In low position you can use as many bits as must be zero due to
+/// alignment. If you don't know the alignment of your pointer you can assume it is
+/// that of the value it is pointing to. The amount of available bits in the low
+/// position is the binary logarithm of the alignment in bytes.
+///
+/// In high position the number of available bits is determined by your compilation target.
+/// On 32 bit architectures this number shall be assumed to be equal to 0.
+/// On x86_64 with 4 level paging the number of available bits is 16 and with level
+/// 5 paging it is 8 bits. On 64 bit ARM without pointer authentication you also have 16
+/// available bits. With pointer authentication you can only reasonably assume you have 0 available
+/// bits unless you know otherwise for your compiler. On all other architectures assume you have
+/// 0 available bits unless you know otherwise.
 pub trait Tag {
     type Size: ArrayLength<bool>;
 

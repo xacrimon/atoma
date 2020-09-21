@@ -11,7 +11,7 @@ impl<'collector> Shield<'collector> {
     #[inline]
     pub(crate) fn new(collector: &'collector Collector) -> Self {
         unsafe {
-            collector.thread_state().enter(collector);
+            collector.get_local().enter(collector);
         }
 
         Self {
@@ -24,25 +24,23 @@ impl<'collector> Shield<'collector> {
         self.collector
     }
 
-    #[cold]
-    #[inline(never)]
+    #[inline]
     pub fn repin(&mut self) {
         unsafe {
-            self.collector.thread_state().exit(self.collector);
-            self.collector.thread_state().enter(self.collector);
+            self.collector.get_local().exit(self.collector);
+            self.collector.get_local().enter(self.collector);
         }
     }
 
-    #[cold]
-    #[inline(never)]
+    #[inline]
     pub fn repin_after<F, R>(&mut self, f: F) -> R
     where
         F: FnOnce() -> R,
     {
         unsafe {
-            self.collector.thread_state().exit(self.collector);
+            self.collector.get_local().exit(self.collector);
             let value = f();
-            self.collector.thread_state().enter(self.collector);
+            self.collector.get_local().enter(self.collector);
             value
         }
     }
@@ -65,7 +63,7 @@ impl<'collector> Drop for Shield<'collector> {
     #[inline]
     fn drop(&mut self) {
         unsafe {
-            self.collector.thread_state().exit(self.collector);
+            self.collector.get_local().exit(self.collector);
         }
     }
 }

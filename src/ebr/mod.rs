@@ -1,12 +1,13 @@
 mod epoch;
+mod local;
 mod shield;
-mod thread_state;
 
 use crate::{
     barrier::strong_barrier, deferred::Deferred, queue::Queue, thread_local::ThreadLocal,
     CachePadded,
 };
 use epoch::{AtomicEpoch, Epoch};
+use local::{EbrState, Local};
 pub use shield::{CowShield, Shield};
 use std::{
     cmp,
@@ -14,7 +15,6 @@ use std::{
     ptr,
     sync::atomic::{AtomicIsize, AtomicUsize, Ordering},
 };
-use thread_state::{EbrState, ThreadState};
 
 struct DeferredItem {
     epoch: Epoch,
@@ -40,7 +40,7 @@ unsafe impl Send for DeferredItem {}
 unsafe impl Sync for DeferredItem {}
 
 pub struct Collector {
-    threads: ThreadLocal<ThreadState<Self>>,
+    threads: ThreadLocal<Local<Self>>,
     deferred: Queue<DeferredItem>,
     global_epoch: CachePadded<AtomicEpoch>,
     deferred_amount: CachePadded<AtomicIsize>,
@@ -149,8 +149,8 @@ impl Collector {
     }
 
     #[inline]
-    pub(crate) fn thread_state(&self) -> &ThreadState<Self> {
-        self.threads.get(ThreadState::new)
+    pub(crate) fn get_local(&self) -> &Local<Self> {
+        self.threads.get(Local::new)
     }
 
     #[inline]

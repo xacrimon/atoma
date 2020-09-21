@@ -22,7 +22,7 @@ pub trait EbrState {
 /// Per thread state needed for the GC.
 /// We store a local epoch, an active flag and a number generator used
 /// for reducing the frequency of some operations.
-pub struct ThreadState<G> {
+pub struct Local<G> {
     /// A counter of how many shields are active.
     shields: UnsafeCell<Cell<u32>>,
 
@@ -36,7 +36,7 @@ pub struct ThreadState<G> {
     _m0: PhantomData<G>,
 }
 
-impl<G: EbrState> ThreadState<G> {
+impl<G: EbrState> Local<G> {
     pub fn new() -> Self {
         Self {
             shields: UnsafeCell::new(Cell::new(0)),
@@ -115,5 +115,5 @@ impl<G: EbrState> ThreadState<G> {
     }
 }
 
-unsafe impl<G> Send for ThreadState<G> {}
-unsafe impl<G> Sync for ThreadState<G> {}
+unsafe impl<G> Send for Local<G> {}
+unsafe impl<G> Sync for Local<G> {}

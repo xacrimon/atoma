@@ -15,6 +15,7 @@ mod linux {
             Strategy::Fallback => fence(Ordering::SeqCst),
         }
     }
+
     pub fn light_barrier() {
         match *STRATEGY {
             Strategy::Membarrier => compiler_fence(Ordering::SeqCst),

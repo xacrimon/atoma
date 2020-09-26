@@ -1,21 +1,21 @@
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicU64, Ordering};
 
-const PIN_MASK: usize = 0b1000_0000;
+const PIN_MASK: u64 = std::u64::MAX >> 1;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy)]
 pub struct Epoch {
-    data: usize,
+    data: u64,
 }
 
 impl Epoch {
-    pub const AMOUNT: usize = 3;
+    pub const AMOUNT: u64 = 3;
     pub const ZERO: Self = Self::from_raw(0);
 
-    const fn from_raw(data: usize) -> Self {
+    const fn from_raw(data: u64) -> Self {
         Self { data }
     }
 
-    pub fn into_raw(self) -> usize {
+    pub fn into_raw(self) -> u64 {
         self.data
     }
 
@@ -33,19 +33,28 @@ impl Epoch {
 
     pub fn next(self) -> Self {
         debug_assert!(!self.is_pinned());
-        let data = (self.data + 1) % Self::AMOUNT;
-        Self::from_raw(data)
+        Self::from_raw(self.data + 1)
+    }
+
+    fn unique(&self) -> u64 {
+        self.data % Self::AMOUNT
+    }
+}
+
+impl PartialEq for Epoch {
+    fn eq(&self, other: &Self) -> bool {
+        self.unique() == other.unique()
     }
 }
 
 pub struct AtomicEpoch {
-    raw: AtomicUsize,
+    raw: AtomicU64,
 }
 
 impl AtomicEpoch {
     pub fn new(epoch: Epoch) -> Self {
         Self {
-            raw: AtomicUsize::new(epoch.into_raw()),
+            raw: AtomicU64::new(epoch.into_raw()),
         }
     }
 

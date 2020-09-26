@@ -81,7 +81,7 @@ impl Global {
     }
 
     pub(crate) fn should_advance(&self) -> bool {
-        self.deferred_amount.load(Ordering::Relaxed) != 0
+        self.deferred_amount.load(Ordering::Relaxed) > 0
     }
 
     pub(crate) fn try_collect_light(this: &Arc<Self>) -> Result<usize, ()> {

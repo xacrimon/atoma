@@ -10,10 +10,10 @@ codegen-units = 1
 incremental = false
 
 [dev-dependencies]
-criterion = "0.3.3"
+criterion = "=0.3.3"
 flize = { path = ".." }
-crossbeam-epoch = "0.8.2"
-num_cpus = "1.13.0"
+crossbeam-epoch = "=0.8.2"
+num_cpus = "=1.13.0"
 
 [[bench]]
 name = "pin-flize"

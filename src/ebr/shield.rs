@@ -54,3 +54,33 @@ impl<'a> Drop for Shield<'a> {
         }
     }
 }
+
+#[derive(Clone)]
+pub enum CowShield<'collector, 'shield> {
+    Owned(Shield<'collector>),
+    Borrowed(&'shield Shield<'collector>),
+}
+
+impl<'collector, 'shield> CowShield<'collector, 'shield> {
+    pub fn new_owned(shield: Shield<'collector>) -> Self {
+        CowShield::Owned(shield)
+    }
+
+    pub fn new_borrowed(shield: &'shield Shield<'collector>) -> Self {
+        CowShield::Borrowed(shield)
+    }
+
+    pub fn into_owned(self) -> Shield<'collector> {
+        match self {
+            CowShield::Owned(shield) => shield,
+            CowShield::Borrowed(shield) => shield.clone(),
+        }
+    }
+
+    pub fn get(&self) -> &Shield<'collector> {
+        match self {
+            CowShield::Owned(shield) => shield,
+            CowShield::Borrowed(shield) => shield,
+        }
+    }
+}

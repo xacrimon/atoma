@@ -35,6 +35,18 @@ impl<'a> Shield<'a> {
     }
 }
 
+impl<'a> Clone for Shield<'a> {
+    fn clone(&self) -> Self {
+        unsafe {
+            self.local_state.enter();
+        }
+
+        Self {
+            local_state: self.local_state,
+        }
+    }
+}
+
 impl<'a> Drop for Shield<'a> {
     fn drop(&mut self) {
         unsafe {

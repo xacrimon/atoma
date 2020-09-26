@@ -4,9 +4,9 @@ version = "0.1.0"
 authors = ["Acrimon <joel.wejdenstal@gmail.com>"]
 edition = "2018"
 
-[profile.release]
+[profile.bench]
 codegen-units = 1
-panic = "abort"
+incremental = false
 
 [dev-dependencies]
 criterion = "0.3.3"
@@ -15,5 +15,9 @@ crossbeam-epoch = "0.8.2"
 num_cpus = "1.13.0"
 
 [[bench]]
-name = "pin"
+name = "pin-flize"
+harness = false
+
+[[bench]]
+name = "pin-crossbeam"
 harness = false

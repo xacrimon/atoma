@@ -94,9 +94,7 @@ impl Global {
             let safe_epoch = epoch.next();
             let shield = local_state.shield();
 
-            unsafe {
-                Ok(self.internal_collect(safe_epoch, &shield))
-            }
+            unsafe { Ok(self.internal_collect(safe_epoch, &shield)) }
         } else {
             Err(())
         }

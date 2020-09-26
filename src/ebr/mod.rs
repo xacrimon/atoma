@@ -21,10 +21,10 @@ impl Collector {
     }
 
     pub fn shield<'a>(&'a self) -> Shield<'a> {
-        self.global.shield()
+        Global::shield(&self.global)
     }
 
     pub fn local(&self) -> Local {
-        self.global.local()
+        Global::local(&self.global)
     }
 }

@@ -54,18 +54,18 @@ impl Global {
         }
     }
 
-    fn local_state<'a>(self: &'a Arc<Self>) -> &'a Arc<LocalState> {
-        self.threads
-            .get(|| Arc::new(LocalState::new(Arc::clone(self))))
+    fn local_state<'a>(this: &'a Arc<Self>) -> &'a Arc<LocalState> {
+        this.threads
+            .get(|| Arc::new(LocalState::new(Arc::clone(this))))
     }
 
-    pub(crate) fn shield<'a>(self: &'a Arc<Self>) -> Shield<'a> {
-        let local_state = self.local_state();
+    pub(crate) fn shield<'a>(this: &'a Arc<Self>) -> Shield<'a> {
+        let local_state = Self::local_state(this);
         local_state.shield()
     }
 
-    pub(crate) fn local(self: &Arc<Self>) -> Local {
-        let local_state = self.local_state();
+    pub(crate) fn local(this: &Arc<Self>) -> Local {
+        let local_state = Self::local_state(this);
         Local::new(Arc::clone(&local_state))
     }
 

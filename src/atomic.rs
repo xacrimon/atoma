@@ -7,12 +7,9 @@ use std::{
 
 fn map_both<T, U, F>(result: Result<T, T>, f: F) -> Result<U, U>
 where
-    F: FnOnce(T) -> U,
+    F: FnOnce(T) -> U + Copy,
 {
-    match result {
-        Ok(v) => Ok(f(v)),
-        Err(v) => Err(f(v)),
-    }
+    result.map(f).map_err(f)
 }
 
 #[repr(transparent)]

@@ -5,6 +5,7 @@ authors = ["Acrimon <joel.wejdenstal@gmail.com>"]
 edition = "2018"
 
 [profile.bench]
+lto = "thin"
 codegen-units = 1
 incremental = false
 

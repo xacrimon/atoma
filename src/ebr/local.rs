@@ -74,7 +74,7 @@ impl LocalState {
 
         if self.should_advance() {
             *shields += 1;
-            self.global.try_cycle(self);
+            let _ = self.global.try_cycle(self);
             *shields -= 1;
         }
     }

@@ -36,7 +36,7 @@ impl Epoch {
         Self::from_raw(self.data + 1)
     }
 
-    fn unique(&self) -> u64 {
+    fn unique(self) -> u64 {
         self.data % Self::AMOUNT
     }
 }

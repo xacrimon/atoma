@@ -27,6 +27,10 @@ impl Collector {
     pub fn local(&self) -> Local {
         Global::local(&self.global)
     }
+
+    pub fn try_collect_light(&self) -> Result<usize, ()> {
+        Global::try_collect_light(&self.global)
+    }
 }
 
 impl Default for Collector {

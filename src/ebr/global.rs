@@ -84,19 +84,25 @@ impl Global {
         self.deferred_amount.load(Ordering::Relaxed) != 0
     }
 
-    pub(crate) fn try_cycle(&self, local_state: &LocalState) {
+    pub(crate) fn try_collect_light(this: &Arc<Self>) -> Result<usize, ()> {
+        let local_state = Self::local_state(this);
+        this.try_cycle(local_state)
+    }
+
+    pub(crate) fn try_cycle(&self, local_state: &LocalState) -> Result<usize, ()> {
         if let Ok(epoch) = self.try_advance() {
             let safe_epoch = epoch.next();
             let shield = local_state.shield();
 
-            unsafe {
-                self.internal_collect(safe_epoch, &shield);
-            }
+            unsafe { Ok(self.internal_collect(safe_epoch, &shield)) }
+        } else {
+            Err(())
         }
     }
 
-    unsafe fn internal_collect(&self, epoch: Epoch, shield: &Shield) {
+    unsafe fn internal_collect(&self, epoch: Epoch, shield: &Shield) -> usize {
         strong_barrier();
+        let mut executed_amount = 0;
 
         while let Some(deferred) = self
             .deferred
@@ -104,7 +110,10 @@ impl Global {
         {
             deferred.as_ref_unchecked().execute();
             self.deferred_amount.fetch_sub(1, Ordering::Relaxed);
+            executed_amount += 1;
         }
+
+        executed_amount
     }
 
     fn try_advance(&self) -> Result<Epoch, ()> {

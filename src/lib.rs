@@ -10,6 +10,6 @@ mod thread_local;
 
 pub use atomic::Atomic;
 pub use cache_padded::CachePadded;
-pub use ebr::{Collector, CowShield, Shield};
+pub use ebr::{Collector, Local, Shield};
 pub use shared::Shared;
 pub use tag::{NullTag, Tag};

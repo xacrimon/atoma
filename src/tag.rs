@@ -1,5 +1,5 @@
 use generic_array::{
-    typenum::{Unsigned, U0},
+    typenum::{UTerm, Unsigned},
     ArrayLength, GenericArray,
 };
 use std::mem;
@@ -69,14 +69,12 @@ pub trait Tag {
 pub struct NullTag;
 
 impl Tag for NullTag {
-    type Size = U0;
+    type Size = UTerm;
 
-    #[inline]
     fn deserialize(_bits: GenericArray<bool, Self::Size>) -> Self {
         Self
     }
 
-    #[inline]
     fn serialize(self) -> GenericArray<bool, Self::Size> {
         GenericArray::default()
     }

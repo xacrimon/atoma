@@ -10,7 +10,6 @@ pub struct CachePadded<T> {
 }
 
 impl<T> CachePadded<T> {
-    #[inline]
     pub fn new(value: T) -> Self {
         Self { value }
     }
@@ -19,7 +18,6 @@ impl<T> CachePadded<T> {
 impl<T> Deref for CachePadded<T> {
     type Target = T;
 
-    #[inline]
     fn deref(&self) -> &T {
         &self.value
     }

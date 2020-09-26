@@ -6,23 +6,17 @@ pub struct PriorityQueue<T> {
 }
 
 impl<T: Ord> PriorityQueue<T> {
-    #[cold]
-    #[inline(never)]
     pub fn new() -> Self {
         Self {
             items: Vec::with_capacity(8),
         }
     }
 
-    #[cold]
-    #[inline(never)]
     pub fn push(&mut self, item: T) {
         self.items.push(item);
     }
 
     /// Find the index of the least item and remove it from the list.
-    #[cold]
-    #[inline(never)]
     pub fn pop(&mut self) -> Option<T> {
         (0..self.items.len())
             .min_by_key(|index| unsafe { self.items.get_unchecked(*index) })

@@ -20,11 +20,17 @@ impl Collector {
         }
     }
 
-    pub fn shield<'a>(&'a self) -> Shield<'a> {
+    pub fn shield(&self) -> Shield<'_> {
         Global::shield(&self.global)
     }
 
     pub fn local(&self) -> Local {
         Global::local(&self.global)
+    }
+}
+
+impl Default for Collector {
+    fn default() -> Self {
+        Self::new()
     }
 }

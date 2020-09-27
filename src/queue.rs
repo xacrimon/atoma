@@ -487,7 +487,7 @@ mod tests {
     #[test]
     fn push_pop_check() {
         let collector = Collector::new();
-        let shield = collector.shield();
+        let shield = collector.thin_shield();
         let queue = Queue::new();
         queue.push(5, &shield);
         queue.push(10, &shield);

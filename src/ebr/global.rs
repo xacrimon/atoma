@@ -101,7 +101,6 @@ impl Global {
     }
 
     unsafe fn internal_collect(&self, epoch: Epoch, shield: &Shield) -> usize {
-        strong_barrier();
         let mut executed_amount = 0;
 
         while let Some(deferred) = self
@@ -118,6 +117,7 @@ impl Global {
 
     fn try_advance(&self) -> Result<Epoch, ()> {
         let global_epoch = self.global_epoch.load(Ordering::Relaxed);
+        strong_barrier();
 
         let can_collect = self
             .threads

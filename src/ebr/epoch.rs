@@ -20,15 +20,15 @@ impl Epoch {
     }
 
     pub fn is_pinned(self) -> bool {
-        (self.data & PIN_MASK) != 0
+        (self.data & !PIN_MASK) != 0
     }
 
     pub fn pinned(self) -> Self {
-        Self::from_raw(self.data | PIN_MASK)
+        Self::from_raw(self.data | !PIN_MASK)
     }
 
     pub fn unpinned(self) -> Self {
-        Self::from_raw(self.data & !PIN_MASK)
+        Self::from_raw(self.data & PIN_MASK)
     }
 
     pub fn next(self) -> Self {

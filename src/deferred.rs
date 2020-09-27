@@ -4,9 +4,20 @@ use std::{
     ptr,
 };
 
-const DATA_SIZE: usize = 12;
-type Data = [u8; DATA_SIZE];
+const DATA_SIZE: usize = 3;
+type Data = [usize; DATA_SIZE];
 
+// note to a future reader
+// this module is a giant clusterfuck and I have no idea if half of this is legal
+// but I pray it is and it doesn't segfault so I'll assume I can ship it
+//
+// please consider opening an issue if you find something you think isn't legal to do
+
+/// A `Deferred` is a concrete type that stores a closure implementing `FnOnce()`.
+/// This type has one primary advantage over simply boxing the closure. When
+/// the closures associated capture data struct is less than 3 words.
+/// the closure is stored fully inline without any sort of allocation.
+/// Should it exceed 3 words it will act as a boxed closure.
 pub struct Deferred {
     call: unsafe fn(*mut u8),
     data: Data,
@@ -20,8 +31,10 @@ impl Deferred {
 
         unsafe {
             if size <= mem::size_of::<Data>() && align <= mem::align_of::<Data>() {
+                // store it inline if it fits
                 let mut data = MaybeUninit::<Data>::uninit();
 
+                // I pray this is also safe, otherwise we're in trouble.
                 #[allow(clippy::cast_ptr_alignment)]
                 ptr::write(data.as_mut_ptr() as *mut F, f);
 
@@ -36,9 +49,11 @@ impl Deferred {
                     _m0: PhantomData,
                 }
             } else {
+                // box it instead
                 let b: Box<F> = Box::new(f);
                 let mut data = MaybeUninit::<Data>::uninit();
 
+                // this should be safe but another pair of eyes wouldn't hurt
                 #[allow(clippy::cast_ptr_alignment)]
                 ptr::write(data.as_mut_ptr() as *mut Box<F>, b);
 

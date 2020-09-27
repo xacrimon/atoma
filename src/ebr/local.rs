@@ -99,6 +99,9 @@ impl LocalState {
 unsafe impl Send for LocalState {}
 unsafe impl Sync for LocalState {}
 
+/// A `Local` represents a participant in the epoch system with a local epoch and a counter of active shields.
+/// If you are going to be creating a lot of shields and can keep around a `Local` it will be faster than calling
+/// `Collector::shield` every time since it avoids a table lookup to find the correct `Local`.
 pub struct Local {
     local_state: Arc<LocalState>,
 }
@@ -108,10 +111,12 @@ impl Local {
         Self { local_state }
     }
 
+    /// Creates a shield on this local.
     pub fn shield(&self) -> Shield<'_> {
         self.local_state.shield()
     }
 
+    /// Returns true if this local has active shields and it's epoch is pinned.
     pub fn is_pinned(&self) -> bool {
         self.local_state.is_pinned()
     }

@@ -12,6 +12,10 @@ where
     result.map(f).map_err(f)
 }
 
+/// An `Atomic` represents a tagged atomic pointer protected by the collection system.
+///
+/// This struct provides methods for manipulating the atomic pointer via
+/// standard atomic operations using `Shared` as the corresponding non atomic version.
 #[repr(transparent)]
 pub struct Atomic<V, T1 = NullTag, T2 = NullTag>
 where
@@ -29,6 +33,8 @@ where
     T1: Tag,
     T2: Tag,
 {
+    /// Constructs an `Atomic` from a raw tagged pointer represented as an integer.
+    ///
     /// # Safety
     /// Marked unsafe because this is not usually what the user wants.
     /// `Atomic::null` should be preferred when possible.
@@ -41,20 +47,25 @@ where
         }
     }
 
+    /// Constructs a new `Atomic` from a tagged pointer.
+    ///
     /// # Safety
     /// The alignment of `V` must free up sufficient low bits so that `T` fits.
     pub fn new(shared: Shared<'_, V, T1, T2>) -> Self {
         unsafe { Self::from_raw(shared.into_raw()) }
     }
 
+    /// Constructs a new `Atomic` with a null value.
     pub fn null() -> Self {
         unsafe { Self::from_raw(0) }
     }
 
+    /// This constructs a `Vec<Atomic>` with null values in an optimized manner.
     pub fn null_vec(len: usize) -> Vec<Self> {
         unsafe { mem::transmute(vec![0_usize; len]) }
     }
 
+    /// Load a the tagged pointer.
     pub fn load<'shield>(
         &self,
         ordering: Ordering,
@@ -64,6 +75,7 @@ where
         unsafe { Shared::from_raw(raw) }
     }
 
+    /// Store a tagged pointer, replacing the previous value.
     pub fn store<'shield>(
         &self,
         data: Shared<'_, V, T1, T2>,
@@ -74,6 +86,7 @@ where
         self.data.store(raw, ordering);
     }
 
+    /// Swap the stored tagged pointer, returning the old one.
     pub fn swap<'shield>(
         &self,
         new: Shared<'_, V, T1, T2>,
@@ -85,6 +98,7 @@ where
         unsafe { Shared::from_raw(old_raw) }
     }
 
+    /// Conditionally swap the stored tagged pointer, always returns the previous value.
     pub fn compare_and_swap<'shield>(
         &self,
         current: Shared<'_, V, T1, T2>,
@@ -98,6 +112,9 @@ where
         unsafe { Shared::from_raw(old_raw) }
     }
 
+    /// Conditionally exchange the stored tagged pointer, always returns
+    /// the previous value and a result indicating if it was written or not.
+    /// On success this value is guaranteed to be equal to current.
     pub fn compare_exchange<'shield>(
         &self,
         current: Shared<'_, V, T1, T2>,
@@ -115,6 +132,12 @@ where
         map_both(result, |raw| unsafe { Shared::from_raw(raw) })
     }
 
+    /// Conditionally exchange the stored tagged pointer, always returns
+    /// the previous value and a result indicating if it was written or not.
+    /// On success this value is guaranteed to be equal to current.
+    ///
+    /// This variant may spuriously fail on platforms where LL/SC is used.
+    /// This allows more efficient code generation on those platforms.
     pub fn compare_exchange_weak<'shield>(
         &self,
         current: Shared<'_, V, T1, T2>,

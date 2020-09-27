@@ -1,3 +1,17 @@
+//! This module implements efficient barriers for fast and slow paths.
+//! Often you have the ability to sacrifice performance in the slow path for performance in the fast path
+//! and this is often something you want to do.
+//!
+//! Here we have two kinds of barriers, light and heavy ones respectively.
+//! They can take advantage of OS provided functionality for process wide memory barriers
+//! which means the ability to skip barriers in certain fast paths.
+//!
+//! This module will conditionally compile an optimized implementation depending on the target OS
+//! and will attempt to determine the most efficient setup dynamically at runtime.
+//!
+//! When no specialized implementation is available we fall back to executing a normal
+//! sequentially consistent barrier in both the light and heavy barriers.
+
 #[cfg(target_os = "linux")]
 pub use linux::{light_barrier, strong_barrier};
 

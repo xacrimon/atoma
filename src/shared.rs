@@ -29,7 +29,7 @@ where
     T2: Tag,
 {
     pub fn null() -> Self {
-        unsafe { Self::from_raw(ptr::null() as usize) }
+        unsafe { Self::from_raw(ptr::null::<()>() as usize) }
     }
 
     /// Constructs a `Shared` from a raw tagged pointer with an arbitrary lifetime.

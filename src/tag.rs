@@ -88,10 +88,14 @@ pub fn set_tag<T: Tag>(
 /// available bits. With pointer authentication you can only reasonably assume you have 0 available
 /// bits unless you know otherwise for your compiler. On all other architectures assume you have
 /// 0 available bits unless you know otherwise.
-pub trait Tag {
+pub trait Tag: Copy {
+    /// The size in bits of the tag.
     type Size: ArrayLength<bool>;
 
+    /// Deserialize an array of bits into the tag.
     fn deserialize(bits: GenericArray<bool, Self::Size>) -> Self;
+
+    /// Serialize the tag to an array of bits.
     fn serialize(self) -> GenericArray<bool, Self::Size>;
 }
 

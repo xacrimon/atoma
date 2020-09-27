@@ -66,46 +66,57 @@ where
     }
 
     /// Load a the tagged pointer.
-    pub fn load<'shield>(
+    pub fn load<'collector, 'shield, S>(
         &self,
         ordering: Ordering,
-        _shield: &'shield Shield<'_>,
-    ) -> Shared<'shield, V, T1, T2> {
+        _shield: &'shield S,
+    ) -> Shared<'shield, V, T1, T2>
+    where
+        S: Shield<'collector>,
+    {
         let raw = self.data.load(ordering);
         unsafe { Shared::from_raw(raw) }
     }
 
     /// Store a tagged pointer, replacing the previous value.
-    pub fn store<'shield>(
+    pub fn store<'collector, 'shield, S>(
         &self,
         data: Shared<'_, V, T1, T2>,
         ordering: Ordering,
-        _shield: &'shield Shield<'_>,
-    ) {
+        _shield: &'shield S,
+    ) where
+        S: Shield<'collector>,
+    {
         let raw = data.into_raw();
         self.data.store(raw, ordering);
     }
 
     /// Swap the stored tagged pointer, returning the old one.
-    pub fn swap<'shield>(
+    pub fn swap<'collector, 'shield, S>(
         &self,
         new: Shared<'_, V, T1, T2>,
         ordering: Ordering,
-        _shield: &'shield Shield<'_>,
-    ) -> Shared<'shield, V, T1, T2> {
+        _shield: &'shield S,
+    ) -> Shared<'shield, V, T1, T2>
+    where
+        S: Shield<'collector>,
+    {
         let new_raw = new.into_raw();
         let old_raw = self.data.swap(new_raw, ordering);
         unsafe { Shared::from_raw(old_raw) }
     }
 
     /// Conditionally swap the stored tagged pointer, always returns the previous value.
-    pub fn compare_and_swap<'shield>(
+    pub fn compare_and_swap<'collector, 'shield, S>(
         &self,
         current: Shared<'_, V, T1, T2>,
         new: Shared<'_, V, T1, T2>,
         order: Ordering,
-        _shield: &'shield Shield<'_>,
-    ) -> Shared<'shield, V, T1, T2> {
+        _shield: &'shield S,
+    ) -> Shared<'shield, V, T1, T2>
+    where
+        S: Shield<'collector>,
+    {
         let current_raw = current.into_raw();
         let new_raw = new.into_raw();
         let old_raw = self.data.compare_and_swap(current_raw, new_raw, order);
@@ -115,14 +126,17 @@ where
     /// Conditionally exchange the stored tagged pointer, always returns
     /// the previous value and a result indicating if it was written or not.
     /// On success this value is guaranteed to be equal to current.
-    pub fn compare_exchange<'shield>(
+    pub fn compare_exchange<'collector, 'shield, S>(
         &self,
         current: Shared<'_, V, T1, T2>,
         new: Shared<'_, V, T1, T2>,
         success: Ordering,
         failure: Ordering,
-        _shield: &'shield Shield<'_>,
-    ) -> Result<Shared<'shield, V, T1, T2>, Shared<'shield, V, T1, T2>> {
+        _shield: &'shield S,
+    ) -> Result<Shared<'shield, V, T1, T2>, Shared<'shield, V, T1, T2>>
+    where
+        S: Shield<'collector>,
+    {
         let current_raw = current.into_raw();
         let new_raw = new.into_raw();
         let result = self
@@ -138,14 +152,17 @@ where
     ///
     /// This variant may spuriously fail on platforms where LL/SC is used.
     /// This allows more efficient code generation on those platforms.
-    pub fn compare_exchange_weak<'shield>(
+    pub fn compare_exchange_weak<'collector, 'shield, S>(
         &self,
         current: Shared<'_, V, T1, T2>,
         new: Shared<'_, V, T1, T2>,
         success: Ordering,
         failure: Ordering,
-        _shield: &'shield Shield<'_>,
-    ) -> Result<Shared<'shield, V, T1, T2>, Shared<'shield, V, T1, T2>> {
+        _shield: &'shield S,
+    ) -> Result<Shared<'shield, V, T1, T2>, Shared<'shield, V, T1, T2>>
+    where
+        S: Shield<'collector>,
+    {
         let current_raw = current.into_raw();
         let new_raw = new.into_raw();
         let result = self

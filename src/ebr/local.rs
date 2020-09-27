@@ -1,7 +1,7 @@
 use super::{
     epoch::{AtomicEpoch, Epoch},
     global::Global,
-    shield::Shield,
+    shield::{Shield, ThinShield},
 };
 use crate::{barrier::light_barrier, deferred::Deferred, CachePadded};
 use std::{
@@ -83,16 +83,19 @@ impl LocalState {
         self.epoch.load(Ordering::Relaxed).is_pinned()
     }
 
-    pub(crate) fn retire(&self, deferred: Deferred, shield: &Shield) {
+    pub(crate) fn retire<'a, S>(&self, deferred: Deferred, shield: &S)
+    where
+        S: Shield<'a>,
+    {
         self.global.retire(deferred, shield);
     }
 
-    pub(crate) fn shield(&self) -> Shield<'_> {
+    pub(crate) fn thin_shield(&self) -> ThinShield<'_> {
         unsafe {
             self.enter();
         }
 
-        Shield::new(self)
+        ThinShield::new(self)
     }
 }
 
@@ -112,8 +115,8 @@ impl Local {
     }
 
     /// Creates a shield on this local.
-    pub fn shield(&self) -> Shield<'_> {
-        self.local_state.shield()
+    pub fn thin_shield(&self) -> ThinShield<'_> {
+        self.local_state.thin_shield()
     }
 
     /// Returns true if this local has active shields and it's epoch is pinned.

@@ -1,7 +1,7 @@
 use super::{
     epoch::{AtomicEpoch, Epoch},
     local::{Local, LocalState},
-    shield::Shield,
+    shield::{Shield, ThinShield},
 };
 use crate::{
     barrier::strong_barrier, deferred::Deferred, queue::Queue, thread_local::ThreadLocal,
@@ -59,9 +59,9 @@ impl Global {
             .get(|| Arc::new(LocalState::new(Arc::clone(this))))
     }
 
-    pub(crate) fn shield<'a>(this: &'a Arc<Self>) -> Shield<'a> {
+    pub(crate) fn thin_shield<'a>(this: &'a Arc<Self>) -> ThinShield<'a> {
         let local_state = Self::local_state(this);
-        local_state.shield()
+        local_state.thin_shield()
     }
 
     pub(crate) fn local(this: &Arc<Self>) -> Local {
@@ -73,7 +73,10 @@ impl Global {
         self.global_epoch.load(Ordering::Relaxed)
     }
 
-    pub(crate) fn retire(&self, deferred: Deferred, shield: &Shield) {
+    pub(crate) fn retire<'a, S>(&self, deferred: Deferred, shield: &S)
+    where
+        S: Shield<'a>,
+    {
         let epoch = self.global_epoch.load(Ordering::Relaxed);
         let deferred = DeferredItem::new(epoch, deferred);
         self.deferred.push(deferred, shield);
@@ -92,7 +95,7 @@ impl Global {
     pub(crate) fn try_cycle(&self, local_state: &LocalState) -> Result<usize, ()> {
         if let Ok(epoch) = self.try_advance() {
             let safe_epoch = epoch.next();
-            let shield = local_state.shield();
+            let shield = local_state.thin_shield();
 
             unsafe { Ok(self.internal_collect(safe_epoch, &shield)) }
         } else {
@@ -100,7 +103,7 @@ impl Global {
         }
     }
 
-    unsafe fn internal_collect(&self, epoch: Epoch, shield: &Shield) -> usize {
+    unsafe fn internal_collect(&self, epoch: Epoch, shield: &ThinShield) -> usize {
         let mut executed_amount = 0;
 
         while let Some(deferred) = self

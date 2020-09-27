@@ -1,33 +1,52 @@
 use super::local::LocalState;
 use crate::deferred::Deferred;
+use std::marker::PhantomData;
 
-/// A `Shield` locks an epoch and is needed to manipulate protected atomic pointers.
-/// It is a type level contract so that you are forces to acquire one before manipulating pointers.
-/// This reduces common mistakes drastically since incorrect code will now fail at compile time.
-pub struct Shield<'a> {
-    local_state: &'a LocalState,
-}
-
-impl<'a> Shield<'a> {
-    pub(crate) fn new(local_state: &'a LocalState) -> Shield<'a> {
-        Self { local_state }
-    }
-
+/// Universal methods for any shield implementation.
+pub trait Shield<'a>: Clone {
     /// Attempt to synchronize the current thread to allow advancing the global epoch.
     /// This might be useful to call every once in a while if you plan on holding a `Shield`
     /// for an extended amount of time as to not stop garbage collection.
     ///
     /// This is only effective if this is the only active shield created by this thread.
-    pub fn repin(&mut self) {
+    fn repin(&mut self);
+
+    /// Attempt to synchronize the current thread like `Shield::repin` but executing a closure
+    /// during the time the `Shield` is temporarily deactivated.
+    fn repin_after<F, R>(&mut self, f: F) -> R
+    where
+        F: FnOnce() -> R;
+
+    /// Schedule a closure for execution once no shield may hold a reference
+    /// to an object unlinked with the current shield.
+    fn retire<F>(&self, f: F)
+    where
+        F: FnOnce() + 'a;
+}
+
+/// A `ThinShield` locks an epoch and is needed to manipulate protected atomic pointers.
+/// It is a type level contract so that you are forces to acquire one before manipulating pointers.
+/// This reduces common mistakes drastically since incorrect code will now fail at compile time.
+///
+/// For documentation on functionality please check the documentation of the `Shield` trait.
+pub struct ThinShield<'a> {
+    local_state: &'a LocalState,
+}
+
+impl<'a> ThinShield<'a> {
+    pub(crate) fn new(local_state: &'a LocalState) -> Self {
+        Self { local_state }
+    }
+}
+
+impl<'a> Shield<'a> for ThinShield<'a> {
+    fn repin(&mut self) {
         unsafe {
             self.local_state.exit();
             self.local_state.enter();
         }
     }
-
-    /// Attempt to synchronize the current thread like `Shield::repin` but executing a closure
-    /// during the time the `Shield` is temporarily deactivated.
-    pub fn repin_after<F, R>(&mut self, f: F) -> R
+    fn repin_after<F, R>(&mut self, f: F) -> R
     where
         F: FnOnce() -> R,
     {
@@ -38,16 +57,16 @@ impl<'a> Shield<'a> {
             value
         }
     }
-
-    /// Schedule a closure for execution once no shield may hold a reference
-    /// to an object unlinked with the current shield.
-    pub fn retire<F: FnOnce() + 'a>(&self, f: F) {
+    fn retire<F>(&self, f: F)
+    where
+        F: FnOnce() + 'a,
+    {
         let deferred = Deferred::new(f);
         self.local_state.retire(deferred, self);
     }
 }
 
-impl<'a> Clone for Shield<'a> {
+impl<'a> Clone for ThinShield<'a> {
     fn clone(&self) -> Self {
         unsafe {
             self.local_state.enter();
@@ -59,7 +78,7 @@ impl<'a> Clone for Shield<'a> {
     }
 }
 
-impl<'a> Drop for Shield<'a> {
+impl<'a> Drop for ThinShield<'a> {
     fn drop(&mut self) {
         unsafe {
             self.local_state.exit();
@@ -70,30 +89,36 @@ impl<'a> Drop for Shield<'a> {
 /// This is a utility type that allows you to either take a reference to a shield
 /// and be bound by the lifetime of it or take an owned shield use `'static`.
 #[derive(Clone)]
-pub enum CowShield<'collector, 'shield> {
-    Owned(Shield<'collector>),
-    Borrowed(&'shield Shield<'collector>),
+pub enum CowShield<'collector, 'shield, S>
+where
+    S: Shield<'collector>,
+{
+    Owned(S, PhantomData<&'collector ()>),
+    Borrowed(&'shield S),
 }
 
-impl<'collector, 'shield> CowShield<'collector, 'shield> {
-    pub fn new_owned(shield: Shield<'collector>) -> Self {
-        CowShield::Owned(shield)
+impl<'collector, 'shield, S> CowShield<'collector, 'shield, S>
+where
+    S: Shield<'collector>,
+{
+    pub fn new_owned(shield: S) -> Self {
+        CowShield::Owned(shield, PhantomData)
     }
 
-    pub fn new_borrowed(shield: &'shield Shield<'collector>) -> Self {
+    pub fn new_borrowed(shield: &'shield S) -> Self {
         CowShield::Borrowed(shield)
     }
 
-    pub fn into_owned(self) -> Shield<'collector> {
+    pub fn into_owned(self) -> S {
         match self {
-            CowShield::Owned(shield) => shield,
+            CowShield::Owned(shield, _) => shield,
             CowShield::Borrowed(shield) => shield.clone(),
         }
     }
 
-    pub fn get(&self) -> &Shield<'collector> {
+    pub fn get(&self) -> &S {
         match self {
-            CowShield::Owned(shield) => shield,
+            CowShield::Owned(shield, _) => shield,
             CowShield::Borrowed(shield) => shield,
         }
     }

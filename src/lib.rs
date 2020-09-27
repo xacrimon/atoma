@@ -29,6 +29,13 @@
 //! after all threads that could possibly have a reference have exited their critical sections (dropped all their shields).
 //! This can be accomplished by calling `Shield::defer` and supplying a closure. This closure
 //! will then be executed once all threads currently in a critical section have exited it at least once.
+//!
+//! flize also handles a couple of other things that vastly improves quality of life
+//! and simplicity for users compared to `crossbeam-epoch`. For example flize provides you
+//! with full support for low and high bit pointer tags. It takes this one step further
+//! and allows for arbitrary structs that can be serialized to an array of bits to
+//! be used as tags. The library will handle reading, writing and stripping these tags from and to pointers
+//! along with serialization for you with a set of helper methods on `Shared` for interacting with tags ergonomically.
 
 mod atomic;
 mod barrier;
@@ -42,6 +49,6 @@ mod thread_local;
 
 pub use atomic::Atomic;
 pub use cache_padded::CachePadded;
-pub use ebr::{Collector, CowShield, Local, Shield};
+pub use ebr::{Collector, CowShield, Local, Shield, ThinShield};
 pub use shared::Shared;
 pub use tag::{NullTag, Tag};

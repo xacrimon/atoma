@@ -29,23 +29,32 @@ where
         }
     }
 
-    fn cas_head(
+    fn cas_head<'a, S>(
         &self,
         current: Shared<'_, Node<T>>,
         next: Shared<'_, Node<T>>,
-        shield: &Shield,
-    ) -> bool {
+        shield: &S,
+    ) -> bool
+    where
+        S: Shield<'a>,
+    {
         self.head
             .compare_and_swap(current, next, Ordering::SeqCst, shield)
             == current
     }
 
-    fn cas_tail(&self, current: Shared<'_, Node<T>>, next: Shared<'_, Node<T>>, shield: &Shield) {
+    fn cas_tail<'a, S>(&self, current: Shared<'_, Node<T>>, next: Shared<'_, Node<T>>, shield: &S)
+    where
+        S: Shield<'a>,
+    {
         self.tail
             .compare_and_swap(current, next, Ordering::SeqCst, shield);
     }
 
-    pub fn push(&self, value: T, shield: &Shield) {
+    pub fn push<'a, S>(&self, value: T, shield: &S)
+    where
+        S: Shield<'a>,
+    {
         loop {
             let ltail = self.tail.load(Ordering::SeqCst, shield);
             let ltail_ref = unsafe { ltail.as_ref_unchecked() };
@@ -90,9 +99,11 @@ where
         }
     }
 
-    pub fn pop_if<'shield, F>(&self, f: F, shield: &'shield Shield) -> Option<Shared<'shield, T>>
+    pub fn pop_if<'a, 'shield, F, S>(&self, f: F, shield: &'shield S) -> Option<Shared<'shield, T>>
     where
         F: Fn(&T) -> bool,
+        S: Shield<'a>,
+        T: 'a,
     {
         loop {
             let lhead = self.head.load(Ordering::SeqCst, shield);
@@ -107,8 +118,10 @@ where
                 }
 
                 if self.cas_head(lhead, lnext, shield) {
+                    let ptr = lhead.as_ptr();
+
                     shield.retire(move || unsafe {
-                        Box::from_raw(lhead.as_ptr());
+                        Box::from_raw(ptr);
                     })
                 }
 
@@ -425,7 +438,10 @@ impl<T> Node<T> {
         unsafe { Shared::from_ptr(Box::into_raw(Box::new(node))) }
     }
 
-    fn cas_next(&self, current: Shared<'_, Self>, next: Shared<'_, Self>, shield: &Shield) -> bool {
+    fn cas_next<'a, S>(&self, current: Shared<'_, Self>, next: Shared<'_, Self>, shield: &S) -> bool
+    where
+        S: Shield<'a>,
+    {
         self.next
             .compare_and_swap(current, next, Ordering::SeqCst, shield)
             == current
@@ -471,7 +487,7 @@ mod tests {
     #[test]
     fn push_pop_check() {
         let collector = Collector::new();
-        let shield = collector.shield();
+        let shield = collector.thin_shield();
         let queue = Queue::new();
         queue.push(5, &shield);
         queue.push(10, &shield);

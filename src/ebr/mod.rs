@@ -4,7 +4,7 @@ mod local;
 mod shield;
 
 pub use local::Local;
-pub use shield::{CowShield, Shield};
+pub use shield::{CowShield, Shield, ThinShield};
 
 use global::Global;
 use std::sync::Arc;
@@ -21,8 +21,8 @@ impl Collector {
     }
 
     /// Creates a shield on the appropriate local given the current thread.
-    pub fn shield(&self) -> Shield<'_> {
-        Global::shield(&self.global)
+    pub fn thin_shield(&self) -> ThinShield<'_> {
+        Global::thin_shield(&self.global)
     }
 
     /// Get the local for the current thread.

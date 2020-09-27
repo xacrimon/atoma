@@ -41,7 +41,7 @@ pub(crate) struct Global {
     threads: ThreadLocal<Arc<LocalState>>,
     deferred: Queue<DeferredItem>,
     global_epoch: CachePadded<AtomicEpoch>,
-    deferred_amount: AtomicIsize,
+    deferred_amount: CachePadded<AtomicIsize>,
 }
 
 impl Global {
@@ -50,7 +50,7 @@ impl Global {
             threads: ThreadLocal::new(),
             deferred: Queue::new(),
             global_epoch: CachePadded::new(AtomicEpoch::new(Epoch::ZERO)),
-            deferred_amount: AtomicIsize::new(0),
+            deferred_amount: CachePadded::new(AtomicIsize::new(0)),
         }
     }
 

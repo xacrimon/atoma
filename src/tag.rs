@@ -10,9 +10,13 @@ pub enum TagPosition {
 }
 
 impl TagPosition {
+    /// Calculates the start bit offset of the tag depending on the position and type.
     fn to_skip<T: Tag>(&self) -> usize {
         match self {
+            // low tags always start at 0
             TagPosition::Lo => 0,
+
+            // high tags occupy the highest bits so the start offset is the max index minus the size
             TagPosition::Hi => {
                 let usize_bits = mem::size_of::<usize>() * 8;
                 usize_bits - <T::Size as Unsigned>::to_usize()
@@ -21,12 +25,19 @@ impl TagPosition {
     }
 }
 
+/// Zeroes all the tag bits.
 pub fn strip<T1: Tag, T2: Tag>(data: usize) -> usize {
+    // mask for zeroing the low tag
     let mask1: usize = std::usize::MAX >> <T1::Size as Unsigned>::to_usize();
+
+    // mask for zeroing the high tag
     let mask2: usize = std::usize::MAX << <T2::Size as Unsigned>::to_usize();
+
+    // apply the masks with an AND to zero the bits
     data & mask1 & mask2
 }
 
+/// Read the bits of a tag a a certain position.
 pub fn read_tag<T: Tag>(data: usize, position: TagPosition) -> GenericArray<bool, T::Size> {
     let to_skip = position.to_skip::<T>();
     let mut array = GenericArray::default();
@@ -40,6 +51,7 @@ pub fn read_tag<T: Tag>(data: usize, position: TagPosition) -> GenericArray<bool
     array
 }
 
+/// Set the bits of a tag at a certain position.
 pub fn set_tag<T: Tag>(
     mut data: usize,
     bits: GenericArray<bool, T::Size>,
@@ -83,6 +95,8 @@ pub trait Tag {
     fn serialize(self) -> GenericArray<bool, Self::Size>;
 }
 
+/// This tag is a placeholder type that has a size of 0 and stores no state.
+/// If you don't have any tag with information you want to store, this is the default.
 #[derive(Debug, Clone, Copy)]
 pub struct NullTag;
 

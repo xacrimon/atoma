@@ -15,7 +15,7 @@ fn flize() {
             let local = collector.local();
 
             for _ in 0..COUNT {
-                black_box(local.shield());
+                black_box(local.thin_shield());
             }
         }));
     }

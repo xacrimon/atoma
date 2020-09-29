@@ -9,6 +9,11 @@ pub use shield::{CowShield, Shield, ThinShield};
 use global::Global;
 use std::sync::Arc;
 
+/// The `Collector` acts like the central bookkeeper, it stores all the retired functions that are queued
+/// for execution along with information on what each participant is doing, Participants are pretty much always
+/// thread specific as of now but cross-thread participants may be added in the future. This information can be used to determine approximately
+/// when a participant last was in in a critical section and relevant shield history. The collector
+/// uses this information to determine when it is safe to execute a retired function.
 pub struct Collector {
     global: Arc<Global>,
 }

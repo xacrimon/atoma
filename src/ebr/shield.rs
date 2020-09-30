@@ -31,11 +31,15 @@ pub trait Shield<'a>: Clone {
 /// For documentation on functionality please check the documentation of the `Shield` trait.
 pub struct ThinShield<'a> {
     local_state: &'a LocalState,
+    _m0: PhantomData<*mut ()>,
 }
 
 impl<'a> ThinShield<'a> {
     pub(crate) fn new(local_state: &'a LocalState) -> Self {
-        Self { local_state }
+        Self {
+            local_state,
+            _m0: PhantomData,
+        }
     }
 }
 
@@ -72,9 +76,7 @@ impl<'a> Clone for ThinShield<'a> {
             self.local_state.enter();
         }
 
-        Self {
-            local_state: self.local_state,
-        }
+        Self::new(self.local_state)
     }
 }
 

@@ -17,7 +17,7 @@
 //! First up you've got `Collector` and `Shield`, they are the gateway to interacting with the core functionality.
 //! A collector keeps track of what threads are reading protected pointers and which aren't. It does this
 //! by requiring allowing the user to create `Shield`s which act as as sort of guard. The creation
-//! and destruction of this type interacts with the internal bookeeping in the `Collector`.
+//! and destruction of this type interacts with the internal bookkeeping in the `Collector`.
 //! The existance of at least one `Shield` implies that the thread is in a critical section
 //! and may access protected pointers.
 //!

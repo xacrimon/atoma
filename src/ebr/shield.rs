@@ -56,9 +56,11 @@ impl<'a> FullShield<'a> {
 
 impl<'a> Shield<'a> for FullShield<'a> {
     fn repin(&mut self) {
+        // repinning is fine here since we are taking a mutable reference and
+        // therefore this shield is not used for anything else
         unsafe {
-            self.global.ct.enter(self.global);
             self.global.ct.exit(self.global);
+            self.global.ct.enter(self.global);
         }
     }
 
@@ -66,6 +68,7 @@ impl<'a> Shield<'a> for FullShield<'a> {
     where
         F: FnOnce() -> R,
     {
+        // see comment on FullShield::repin
         unsafe {
             self.global.ct.exit(self.global);
             let value = f();
@@ -91,6 +94,7 @@ impl<'a> Clone for FullShield<'a> {
 
 impl<'a> Drop for FullShield<'a> {
     fn drop(&mut self) {
+        // this is okay since we shall have called enter upon construction of this shield object
         unsafe {
             self.global.ct.exit(self.global);
         }
@@ -120,6 +124,7 @@ impl<'a> ThinShield<'a> {
 }
 
 impl<'a> Shield<'a> for ThinShield<'a> {
+    // see comment on FullShield::repin
     fn repin(&mut self) {
         unsafe {
             self.local_state.exit();
@@ -131,6 +136,7 @@ impl<'a> Shield<'a> for ThinShield<'a> {
     where
         F: FnOnce() -> R,
     {
+        // see comment on FullShield::repin
         unsafe {
             self.local_state.exit();
             let value = f();
@@ -150,6 +156,7 @@ impl<'a> Shield<'a> for ThinShield<'a> {
 
 impl<'a> Clone for ThinShield<'a> {
     fn clone(&self) -> Self {
+        // since we're creating a new shield we need to also record the creation of it
         unsafe {
             self.local_state.enter();
         }
@@ -160,6 +167,7 @@ impl<'a> Clone for ThinShield<'a> {
 
 impl<'a> Drop for ThinShield<'a> {
     fn drop(&mut self) {
+        // this is okay since we shall have called enter upon construction of this shield object
         unsafe {
             self.local_state.exit();
         }

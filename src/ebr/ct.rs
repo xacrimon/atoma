@@ -1,10 +1,9 @@
 use super::epoch::{AtomicEpoch, Epoch};
 use super::global::Global;
 use super::ADVANCE_PROBABILITY;
-use crate::barrier::light_barrier;
-use crate::CachePadded;
+
 use std::cell::UnsafeCell;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 
 pub struct CrossThread {

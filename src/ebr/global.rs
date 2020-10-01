@@ -132,13 +132,16 @@ impl Global {
     fn try_advance(&self) -> Result<Epoch, ()> {
         let global_epoch = self.global_epoch.load(Ordering::Relaxed);
         strong_barrier();
+        let ct_epoch = self.ct.load_epoch_relaxed();
+        let ct_is_sync = !ct_epoch.is_pinned() || ct_epoch == global_epoch;
 
-        let can_collect = self
-            .threads
-            .iter()
-            .map(|state| state.load_epoch_relaxed())
-            .filter(|epoch| epoch.is_pinned())
-            .all(|epoch| epoch.unpinned() == global_epoch);
+        let can_collect = ct_is_sync
+            && self
+                .threads
+                .iter()
+                .map(|state| state.load_epoch_relaxed())
+                .filter(|epoch| epoch.is_pinned())
+                .all(|epoch| epoch.unpinned() == global_epoch);
 
         if can_collect {
             self.global_epoch.try_advance(global_epoch)

@@ -27,10 +27,16 @@ impl LocalState {
         }
     }
 
+    /// This function loads the epoch without any ordering constraints.
+    /// This may be called from any thread as it does not access non synchronized data.
     pub(crate) fn load_epoch_relaxed(&self) -> Epoch {
         self.epoch.load(Ordering::Relaxed)
     }
 
+    /// # Safety
+    ///
+    /// This modifies internal state.
+    /// It may only be called from the thread owning this `LocalState` instance.
     unsafe fn should_advance(&self) -> bool {
         let advance_counter = &mut *self.advance_counter.get();
         let previous_advance_counter = *advance_counter;
@@ -44,6 +50,13 @@ impl LocalState {
         }
     }
 
+    /// Records the creation of one thin shield. A call to this
+    /// function must cause a corresponding call to `LocalState::exit` at a later point in time.
+    ///
+    /// # Safety
+    ///
+    /// This modifies internal state.
+    /// It may only be called from the thread owning this `LocalState` instance.
     pub(crate) unsafe fn enter(&self) {
         let shields = &mut *self.shields.get();
         let previous_shields = *shields;
@@ -57,6 +70,14 @@ impl LocalState {
         }
     }
 
+    /// Records the creation of one thin shield. A call to this
+    /// function must correspond to a call to `LocalState::enter` that occured at
+    /// an earlier point in time.
+    ///
+    /// # Safety
+    ///
+    /// This modifies internal state.
+    /// It may only be called from the thread owning this `LocalState` instance.
     pub(crate) unsafe fn exit(&self) {
         let shields = &mut *self.shields.get();
         let previous_shields = *shields;
@@ -68,6 +89,10 @@ impl LocalState {
         }
     }
 
+    /// # Safety
+    ///
+    /// This modifies internal state.
+    /// It may only be called from the thread owning this `LocalState` instance.
     unsafe fn finalize(&self) {
         let shields = &mut *self.shields.get();
 
@@ -90,6 +115,7 @@ impl LocalState {
     }
 
     pub(crate) fn thin_shield(&self) -> ThinShield<'_> {
+        // we're creating a thin shield object so therefore we must record the creation of it
         unsafe {
             self.enter();
         }

@@ -26,6 +26,24 @@ pub trait Shield<'a>: Clone {
         F: FnOnce() + 'a;
 }
 
+/// A `FullShield` is largely equivalent to `ThinShield` in terms of functionality.
+/// They're both shields with the same guarantees and can be user interchangeably.
+/// The major difference is that `FullShield` implements `Send` and `Sync` while
+/// `Shield` does not. `FullShield` is provided for scenarios like asynchronous iteration
+/// over a datastructure which is a big pain if the iterator isn't `Send`.
+///
+/// The downside to this functionality is that they are much more expensive to create and destroy
+/// and even more so when multiple threads are creating and destroying them at the same time.
+/// This is due to the fact that full shields require more bookeeping to handle the fact
+/// that they may suddently change locals/threads.
+///
+/// While the latency of creation and destruction of a `FullShield` is for the most part
+/// relatively constant it does involve accessing state protected by a `Mutex`.
+/// This means that in the unfortunate event that a thread gets preempted in this critical section
+/// creation and destruction may block. This is in constrast to the wait-free creation and destruction
+/// of a `ThinShield`.
+///
+/// For documentation on functionality please check the documentation of the `Shield` trait.
 pub struct FullShield<'a> {
     global: &'a Arc<Global>,
 }

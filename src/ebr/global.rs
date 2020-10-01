@@ -1,7 +1,8 @@
 use super::{
+    ct::CrossThread,
     epoch::{AtomicEpoch, Epoch},
     local::{Local, LocalState},
-    shield::{Shield, ThinShield},
+    shield::{FullShield, Shield, ThinShield},
 };
 use crate::{
     barrier::strong_barrier, deferred::Deferred, queue::Queue, thread_local::ThreadLocal,
@@ -42,6 +43,7 @@ pub(crate) struct Global {
     deferred: Queue<DeferredItem>,
     global_epoch: CachePadded<AtomicEpoch>,
     deferred_amount: CachePadded<AtomicIsize>,
+    pub(crate) ct: CrossThread,
 }
 
 impl Global {
@@ -51,10 +53,11 @@ impl Global {
             deferred: Queue::new(),
             global_epoch: CachePadded::new(AtomicEpoch::new(Epoch::ZERO)),
             deferred_amount: CachePadded::new(AtomicIsize::new(0)),
+            ct: CrossThread::new(),
         }
     }
 
-    fn local_state<'a>(this: &'a Arc<Self>) -> &'a Arc<LocalState> {
+    pub(crate) fn local_state<'a>(this: &'a Arc<Self>) -> &'a Arc<LocalState> {
         this.threads
             .get(|| Arc::new(LocalState::new(Arc::clone(this))))
     }
@@ -62,6 +65,14 @@ impl Global {
     pub(crate) fn thin_shield<'a>(this: &'a Arc<Self>) -> ThinShield<'a> {
         let local_state = Self::local_state(this);
         local_state.thin_shield()
+    }
+
+    pub(crate) fn full_shield<'a>(this: &'a Arc<Self>) -> FullShield<'a> {
+        unsafe {
+            this.ct.enter(this);
+        }
+
+        FullShield::new(this)
     }
 
     pub(crate) fn local(this: &Arc<Self>) -> Local {

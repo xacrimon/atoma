@@ -1,6 +1,8 @@
+use super::global::Global;
 use super::local::LocalState;
 use crate::deferred::Deferred;
 use std::marker::PhantomData;
+use std::sync::Arc;
 
 /// Universal methods for any shield implementation.
 pub trait Shield<'a>: Clone {
@@ -23,6 +25,62 @@ pub trait Shield<'a>: Clone {
     where
         F: FnOnce() + 'a;
 }
+
+pub struct FullShield<'a> {
+    global: &'a Arc<Global>,
+}
+
+impl<'a> FullShield<'a> {
+    pub(crate) fn new(global: &'a Arc<Global>) -> Self {
+        Self { global }
+    }
+}
+
+impl<'a> Shield<'a> for FullShield<'a> {
+    fn repin(&mut self) {
+        unsafe {
+            self.global.ct.enter(self.global);
+            self.global.ct.exit(self.global);
+        }
+    }
+
+    fn repin_after<F, R>(&mut self, f: F) -> R
+    where
+        F: FnOnce() -> R,
+    {
+        unsafe {
+            self.global.ct.exit(self.global);
+            let value = f();
+            self.global.ct.enter(self.global);
+            value
+        }
+    }
+
+    fn retire<F>(&self, f: F)
+    where
+        F: FnOnce() + 'a,
+    {
+        let deferred = Deferred::new(f);
+        self.global.retire(deferred, self);
+    }
+}
+
+impl<'a> Clone for FullShield<'a> {
+    fn clone(&self) -> Self {
+        Global::full_shield(self.global)
+    }
+}
+
+impl<'a> Drop for FullShield<'a> {
+    fn drop(&mut self) {
+        unsafe {
+            self.global.ct.exit(self.global);
+        }
+    }
+}
+
+unsafe impl<'a> Send for FullShield<'a> {}
+unsafe impl<'a> Sync for FullShield<'a> {}
 
 /// A `ThinShield` locks an epoch and is needed to manipulate protected atomic pointers.
 /// It is a type level contract so that you are forces to acquire one before manipulating pointers.
@@ -50,6 +108,7 @@ impl<'a> Shield<'a> for ThinShield<'a> {
             self.local_state.enter();
         }
     }
+
     fn repin_after<F, R>(&mut self, f: F) -> R
     where
         F: FnOnce() -> R,
@@ -61,6 +120,7 @@ impl<'a> Shield<'a> for ThinShield<'a> {
             value
         }
     }
+
     fn retire<F>(&self, f: F)
     where
         F: FnOnce() + 'a,

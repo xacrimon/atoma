@@ -1,13 +1,16 @@
+mod ct;
 mod epoch;
 mod global;
 mod local;
 mod shield;
 
 pub use local::Local;
-pub use shield::{CowShield, Shield, ThinShield};
+pub use shield::{CowShield, FullShield, Shield, ThinShield};
 
 use global::Global;
 use std::sync::Arc;
+
+const ADVANCE_PROBABILITY: usize = 128;
 
 /// The `Collector` acts like the central bookkeeper, it stores all the retired functions that are queued
 /// for execution along with information on what each participant is doing, Participants are pretty much always
@@ -28,6 +31,10 @@ impl Collector {
     /// Creates a shield on the appropriate local given the current thread.
     pub fn thin_shield(&self) -> ThinShield<'_> {
         Global::thin_shield(&self.global)
+    }
+
+    pub fn full_shield(&self) -> FullShield<'_> {
+        Global::full_shield(&self.global)
     }
 
     /// Get the local for the current thread.

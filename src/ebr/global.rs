@@ -1,7 +1,8 @@
 use super::{
+    ct::CrossThread,
     epoch::{AtomicEpoch, Epoch},
     local::{Local, LocalState},
-    shield::{Shield, ThinShield},
+    shield::{FullShield, Shield, ThinShield},
 };
 use crate::{
     barrier::strong_barrier, deferred::Deferred, queue::Queue, thread_local::ThreadLocal,
@@ -42,6 +43,7 @@ pub(crate) struct Global {
     deferred: Queue<DeferredItem>,
     global_epoch: CachePadded<AtomicEpoch>,
     deferred_amount: CachePadded<AtomicIsize>,
+    pub(crate) ct: CrossThread,
 }
 
 impl Global {
@@ -51,10 +53,11 @@ impl Global {
             deferred: Queue::new(),
             global_epoch: CachePadded::new(AtomicEpoch::new(Epoch::ZERO)),
             deferred_amount: CachePadded::new(AtomicIsize::new(0)),
+            ct: CrossThread::new(),
         }
     }
 
-    fn local_state<'a>(this: &'a Arc<Self>) -> &'a Arc<LocalState> {
+    pub(crate) fn local_state<'a>(this: &'a Arc<Self>) -> &'a Arc<LocalState> {
         this.threads
             .get(|| Arc::new(LocalState::new(Arc::clone(this))))
     }
@@ -62,6 +65,14 @@ impl Global {
     pub(crate) fn thin_shield<'a>(this: &'a Arc<Self>) -> ThinShield<'a> {
         let local_state = Self::local_state(this);
         local_state.thin_shield()
+    }
+
+    pub(crate) fn full_shield<'a>(this: &'a Arc<Self>) -> FullShield<'a> {
+        unsafe {
+            this.ct.enter(this);
+        }
+
+        FullShield::new(this)
     }
 
     pub(crate) fn local(this: &Arc<Self>) -> Local {
@@ -121,13 +132,16 @@ impl Global {
     fn try_advance(&self) -> Result<Epoch, ()> {
         let global_epoch = self.global_epoch.load(Ordering::Relaxed);
         strong_barrier();
+        let ct_epoch = self.ct.load_epoch_relaxed();
+        let ct_is_sync = !ct_epoch.is_pinned() || ct_epoch == global_epoch;
 
-        let can_collect = self
-            .threads
-            .iter()
-            .map(|state| state.load_epoch_relaxed())
-            .filter(|epoch| epoch.is_pinned())
-            .all(|epoch| epoch.unpinned() == global_epoch);
+        let can_collect = ct_is_sync
+            && self
+                .threads
+                .iter()
+                .map(|state| state.load_epoch_relaxed())
+                .filter(|epoch| epoch.is_pinned())
+                .all(|epoch| epoch.unpinned() == global_epoch);
 
         if can_collect {
             self.global_epoch.try_advance(global_epoch)

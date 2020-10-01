@@ -1,6 +1,8 @@
+use super::global::Global;
 use super::local::LocalState;
 use crate::deferred::Deferred;
 use std::marker::PhantomData;
+use std::sync::Arc;
 
 /// Universal methods for any shield implementation.
 pub trait Shield<'a>: Clone {
@@ -23,6 +25,80 @@ pub trait Shield<'a>: Clone {
     where
         F: FnOnce() + 'a;
 }
+
+/// A `FullShield` is largely equivalent to `ThinShield` in terms of functionality.
+/// They're both shields with the same guarantees and can be user interchangeably.
+/// The major difference is that `FullShield` implements `Send` and `Sync` while
+/// `Shield` does not. `FullShield` is provided for scenarios like asynchronous iteration
+/// over a datastructure which is a big pain if the iterator isn't `Send`.
+///
+/// The downside to this functionality is that they are much more expensive to create and destroy
+/// and even more so when multiple threads are creating and destroying them at the same time.
+/// This is due to the fact that full shields require more bookeeping to handle the fact
+/// that they may suddently change locals/threads.
+///
+/// While the latency of creation and destruction of a `FullShield` is for the most part
+/// relatively constant it does involve accessing state protected by a `Mutex`.
+/// This means that in the unfortunate event that a thread gets preempted in this critical section
+/// creation and destruction may block. This is in constrast to the wait-free creation and destruction
+/// of a `ThinShield`.
+///
+/// For documentation on functionality please check the documentation of the `Shield` trait.
+pub struct FullShield<'a> {
+    global: &'a Arc<Global>,
+}
+
+impl<'a> FullShield<'a> {
+    pub(crate) fn new(global: &'a Arc<Global>) -> Self {
+        Self { global }
+    }
+}
+
+impl<'a> Shield<'a> for FullShield<'a> {
+    fn repin(&mut self) {
+        unsafe {
+            self.global.ct.enter(self.global);
+            self.global.ct.exit(self.global);
+        }
+    }
+
+    fn repin_after<F, R>(&mut self, f: F) -> R
+    where
+        F: FnOnce() -> R,
+    {
+        unsafe {
+            self.global.ct.exit(self.global);
+            let value = f();
+            self.global.ct.enter(self.global);
+            value
+        }
+    }
+
+    fn retire<F>(&self, f: F)
+    where
+        F: FnOnce() + 'a,
+    {
+        let deferred = Deferred::new(f);
+        self.global.retire(deferred, self);
+    }
+}
+
+impl<'a> Clone for FullShield<'a> {
+    fn clone(&self) -> Self {
+        Global::full_shield(self.global)
+    }
+}
+
+impl<'a> Drop for FullShield<'a> {
+    fn drop(&mut self) {
+        unsafe {
+            self.global.ct.exit(self.global);
+        }
+    }
+}
+
+unsafe impl<'a> Send for FullShield<'a> {}
+unsafe impl<'a> Sync for FullShield<'a> {}
 
 /// A `ThinShield` locks an epoch and is needed to manipulate protected atomic pointers.
 /// It is a type level contract so that you are forces to acquire one before manipulating pointers.
@@ -50,6 +126,7 @@ impl<'a> Shield<'a> for ThinShield<'a> {
             self.local_state.enter();
         }
     }
+
     fn repin_after<F, R>(&mut self, f: F) -> R
     where
         F: FnOnce() -> R,
@@ -61,6 +138,7 @@ impl<'a> Shield<'a> for ThinShield<'a> {
             value
         }
     }
+
     fn retire<F>(&self, f: F)
     where
         F: FnOnce() + 'a,

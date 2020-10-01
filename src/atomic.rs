@@ -79,14 +79,7 @@ where
     }
 
     /// Store a tagged pointer, replacing the previous value.
-    pub fn store<'collector, 'shield, S>(
-        &self,
-        data: Shared<'_, V, T1, T2>,
-        ordering: Ordering,
-        _shield: &'shield S,
-    ) where
-        S: Shield<'collector>,
-    {
+    pub fn store(&self, data: Shared<'_, V, T1, T2>, ordering: Ordering) {
         let raw = data.into_raw();
         self.data.store(raw, ordering);
     }

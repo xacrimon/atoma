@@ -2,6 +2,7 @@ use super::{
     epoch::{AtomicEpoch, Epoch},
     global::Global,
     shield::{Shield, ThinShield},
+    ADVANCE_PROBABILITY,
 };
 use crate::{barrier::light_barrier, deferred::Deferred, CachePadded};
 use std::{
@@ -9,13 +10,11 @@ use std::{
     sync::{atomic::Ordering, Arc},
 };
 
-const ADVANCE_PROBABILITY: u32 = 128;
-
 pub(crate) struct LocalState {
     global: Arc<Global>,
     epoch: CachePadded<AtomicEpoch>,
-    shields: UnsafeCell<u32>,
-    advance_counter: UnsafeCell<u32>,
+    shields: UnsafeCell<usize>,
+    advance_counter: UnsafeCell<usize>,
 }
 
 impl LocalState {

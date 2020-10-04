@@ -11,16 +11,29 @@ pub trait Shield<'a>: Clone {
     /// for an extended amount of time as to not stop garbage collection.
     ///
     /// This is only effective if this is the only active shield created by this thread.
+    /// Has no effect when called from an [`unprotected`] shield.
+    ///
+    /// [`unprotected`]: fn.unprotected.html
     fn repin(&mut self);
 
     /// Attempt to synchronize the current thread like `Shield::repin` but executing a closure
     /// during the time the `Shield` is temporarily deactivated.
+    ///
+    /// If this method is called from an [`unprotected`] shield, the closure will be executed
+    /// immediately without unpinning the thread.
+    ///
+    /// [`unprotected`]: fn.unprotected.html
     fn repin_after<F, R>(&mut self, f: F) -> R
     where
         F: FnOnce() -> R;
 
     /// Schedule a closure for execution once no shield may hold a reference
     /// to an object unlinked with the current shield.
+    ///
+    /// If this method is called from an [`unprotected`] shield, the closure will be executed
+    /// immediately.
+    ///
+    /// [`unprotected`]: fn.unprotected.html
     fn retire<F>(&self, f: F)
     where
         F: FnOnce() + 'a;
@@ -172,6 +185,83 @@ impl<'a> Drop for ThinShield<'a> {
             self.local_state.exit();
         }
     }
+}
+
+#[derive(Copy, Clone)]
+struct UnprotectedShield;
+
+impl<'a> Shield<'a> for UnprotectedShield {
+    fn repin(&mut self) {}
+
+    fn repin_after<F, R>(&mut self, f: F) -> R
+    where
+        F: FnOnce() -> R,
+    {
+        f()
+    }
+
+    fn retire<F>(&self, f: F)
+    where
+        F: FnOnce() + 'a,
+    {
+        f();
+    }
+}
+
+/// Returns a reference to a dummy shield that allows unprotected access to [`Atomic`]s.
+///
+/// This shield will not keep any thread pinned, it just allows interacting with [`Atomic`]s
+/// unsafely.
+/// Thus, neither calling [`repin`] nor [`repin_after`] on a shield returned from this function will
+/// actually re-pin the current thread. Calling [`repin_after`] or [`retire`] will execute the
+/// supplied function immediately.
+///
+/// # Safety
+/// Loading and dereferencing data from an [`Atomic`] using this guard is safe only if the [`Atomic`]
+/// is not being concurrently modified by other threads.
+///
+/// # Examples
+/// ```
+/// use flize::{self, Atomic, Shared, Shield};
+/// use std::sync::atomic::Ordering::Relaxed;
+/// use std::mem;
+///
+/// let a = {
+///     let s: Shared<'_, i32> = unsafe { Shared::from_ptr(Box::into_raw(Box::new(7))) };
+///     Atomic::new(s)
+/// };
+///
+/// unsafe {
+///     // Load `a` without pinning the current thread.
+///     let s = a.load(Relaxed, flize::unprotected());
+///     assert_eq!(s.as_ref_unchecked(), &7);
+///
+///     // It is possible to create more unprotected shields with `clone()`.
+///     let unprotected = &flize::unprotected().clone();
+///     
+///     // Swap `a` with a new value (9) without pinning the current thread.
+///     let s = Shared::from_ptr(Box::into_raw(Box::new(9)));
+///     let s = a.swap(s, Relaxed, unprotected);
+///     assert_eq!(a.load(Relaxed, unprotected).as_ref_unchecked(), &9);
+///     assert_eq!(s.as_ref_unchecked(), &7);
+///
+///     let ptr = a.load(Relaxed, unprotected).as_ptr();
+///     unprotected.retire(move || {
+///         // This is executed immediately, thus `a` now holds an invalid pointer.
+///         drop(Box::from_raw(ptr));    
+///     });
+///     
+///     // Dropping `unprotected` doesn't affect the current thread since it did not pin it.
+/// }
+/// ```
+///
+/// [`Atomic`]: struct.Atomic.html
+/// [`repin`]: trait.Shield.html#method.repin
+/// [`repin_after`]: trait.Shield.html#method.repin_after
+/// [`retire`]: trait.Shield.html#method.retire
+pub unsafe fn unprotected() -> &'static impl Shield<'static> {
+    static UNPROTECTED: UnprotectedShield = UnprotectedShield;
+    &UNPROTECTED
 }
 
 /// This is a utility type that allows you to either take a reference to a shield

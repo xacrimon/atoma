@@ -23,7 +23,7 @@ pub use fallback::{light_barrier, strong_barrier};
 
 #[cfg(target_os = "windows")]
 mod windows {
-    use std::sync::atomic::{fence, compiler_fence, Ordering};
+    use std::sync::atomic::{compiler_fence, Ordering};
     use winapi::um::processthreadsapi;
 
     pub fn strong_barrier() {

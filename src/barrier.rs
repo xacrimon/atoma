@@ -13,7 +13,7 @@
 //! sequentially consistent barrier in both the light and heavy barriers.
 
 #[cfg(target_os = "windows")]
-pub use windows::{light_barrier, heavy_barrier};
+pub use windows::{light_barrier, strong_barrier};
 
 #[cfg(target_os = "linux")]
 pub use linux::{light_barrier, strong_barrier};
@@ -27,7 +27,9 @@ mod windows {
     use winapi::um::processthreadsapi;
 
     pub fn strong_barrier() {
-        processthreadsapi::FlushProcessWriteBuffers();
+        unsafe {
+            processthreadsapi::FlushProcessWriteBuffers();
+        }
     }
 
     pub fn light_barrier() {

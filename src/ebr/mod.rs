@@ -5,7 +5,7 @@ mod local;
 mod shield;
 
 pub use local::Local;
-pub use shield::{unprotected, CowShield, FullShield, Shield, ThinShield};
+pub use shield::{unprotected, CowShield, FullShield, Shield, ThinShield, UnprotectedShield};
 
 use global::Global;
 use std::sync::Arc;

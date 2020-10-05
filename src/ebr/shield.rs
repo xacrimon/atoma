@@ -187,8 +187,25 @@ impl<'a> Drop for ThinShield<'a> {
     }
 }
 
+/// An `UnprotectedShield` is a shield that does not actually lock an epoch, but can still be used to
+/// manipulate protected atomic pointers.
+/// Obtaining an `UnprotectedShield` is unsafe, since it allows unsafe access to atomics, and is only
+/// possible through [`flize::unprotected`].
+///
+/// For documentation on functionality please check the documentation of [`flize::unprotected`] and the `Shield` trait.
+///
+/// [`flize::unprotected`]: fn.unprotected.html
 #[derive(Copy, Clone)]
-struct UnprotectedShield;
+pub struct UnprotectedShield {
+    _private: (),
+}
+
+// Doc tests have `compile_fail`, but regular `#[test]`s do not (at least without additional dependencies).
+/// ```compile_fail
+///     let u = flize::UnprotectedShield { _private: () };
+/// ```
+#[allow(unused)]
+struct UnprotectedCompileFailTests;
 
 impl<'a> Shield<'a> for UnprotectedShield {
     fn repin(&mut self) {}
@@ -259,8 +276,8 @@ impl<'a> Shield<'a> for UnprotectedShield {
 /// [`repin`]: trait.Shield.html#method.repin
 /// [`repin_after`]: trait.Shield.html#method.repin_after
 /// [`retire`]: trait.Shield.html#method.retire
-pub unsafe fn unprotected() -> &'static impl Shield<'static> {
-    static UNPROTECTED: UnprotectedShield = UnprotectedShield;
+pub unsafe fn unprotected() -> &'static UnprotectedShield {
+    static UNPROTECTED: UnprotectedShield = UnprotectedShield { _private: () };
     &UNPROTECTED
 }
 

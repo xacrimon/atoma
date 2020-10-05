@@ -12,11 +12,30 @@
 //! When no specialized implementation is available we fall back to executing a normal
 //! sequentially consistent barrier in both the light and heavy barriers.
 
+#[cfg(target_os = "windows")]
+pub use windows::{light_barrier, strong_barrier};
+
 #[cfg(target_os = "linux")]
 pub use linux::{light_barrier, strong_barrier};
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(all(not(target_os = "linux"), not(target_os = "windows")))]
 pub use fallback::{light_barrier, strong_barrier};
+
+#[cfg(target_os = "windows")]
+mod windows {
+    use std::sync::atomic::{compiler_fence, Ordering};
+    use winapi::um::processthreadsapi;
+
+    pub fn strong_barrier() {
+        unsafe {
+            processthreadsapi::FlushProcessWriteBuffers();
+        }
+    }
+
+    pub fn light_barrier() {
+        compiler_fence(Ordering::SeqCst);
+    }
+}
 
 #[cfg(target_os = "linux")]
 mod linux {
@@ -105,7 +124,7 @@ mod linux {
     }
 }
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(all(not(target_os = "linux"), not(target_os = "windows")))]
 mod fallback {
     use std::sync::atomic::{fence, Ordering};
 

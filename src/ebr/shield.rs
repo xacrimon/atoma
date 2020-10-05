@@ -47,7 +47,7 @@ pub trait Shield<'a>: Clone {
 ///
 /// The downside to this functionality is that they are much more expensive to create and destroy
 /// and even more so when multiple threads are creating and destroying them at the same time.
-/// This is due to the fact that full shields require more bookeeping to handle the fact
+/// This is due to the fact that full shields require more bookkeeping to handle the fact
 /// that they may suddently change locals/threads.
 ///
 /// While the latency of creation and destruction of a `FullShield` is for the most part

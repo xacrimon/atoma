@@ -4,8 +4,8 @@
 //! instead of hash tables for storing thread-local data.
 
 use super::priority_queue::PriorityQueue;
-use once_cell::sync::Lazy;
-use std::sync::Mutex;
+use crate::lazy::Lazy;
+use crate::mutex::Mutex;
 
 /// This structure allocates ids.
 /// It is compose of a `limit` integer and a list of free ids lesser than `limit`.
@@ -43,14 +43,14 @@ struct ThreadId(u32);
 
 impl ThreadId {
     fn new() -> Self {
-        Self(ID_ALLOCATOR.lock().unwrap().allocate())
+        Self(ID_ALLOCATOR.get().lock().allocate())
     }
 }
 
 /// Drop is implemented here because it's the only clean way to run code when a thread exits.
 impl Drop for ThreadId {
     fn drop(&mut self) {
-        ID_ALLOCATOR.lock().unwrap().deallocate(self.0);
+        ID_ALLOCATOR.get().lock().deallocate(self.0);
     }
 }
 

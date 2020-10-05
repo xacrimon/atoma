@@ -2,9 +2,10 @@ use super::epoch::{AtomicEpoch, Epoch};
 use super::global::Global;
 use super::ADVANCE_PROBABILITY;
 
+use crate::mutex::Mutex;
 use std::cell::UnsafeCell;
 use std::sync::atomic::Ordering;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 pub struct CrossThread {
     lock: Mutex<()>,
@@ -53,7 +54,7 @@ impl CrossThread {
     /// It is marked unsafe since calling it assumes exit will be called once
     /// at a later point in time.
     pub(crate) unsafe fn enter(&self, global: &Global) {
-        let lock = self.lock.lock().unwrap();
+        let lock = self.lock.lock();
         let shields = &mut *self.shields.get();
         let previous_shields = *shields;
         *shields += 1;
@@ -75,7 +76,7 @@ impl CrossThread {
     /// It is marked unsafe because it assumes enter has been called previously once for
     /// every corresponding call to this function.
     pub(crate) unsafe fn exit(&self, global: &Arc<Global>) {
-        let lock = self.lock.lock().unwrap();
+        let lock = self.lock.lock();
         let shields = &mut *self.shields.get();
         let previous_shields = *shields;
         *shields -= 1;

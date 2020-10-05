@@ -17,3 +17,6 @@ generic-array = "=0.14.4"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 libc = "0.2.77"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+winapi = "0.3.9"

@@ -42,6 +42,7 @@ mod barrier;
 mod cache_padded;
 mod deferred;
 mod ebr;
+mod lazy;
 mod mutex;
 mod queue;
 mod shared;

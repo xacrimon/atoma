@@ -20,18 +20,18 @@ pub use fallback::{light_barrier, strong_barrier};
 
 #[cfg(target_os = "linux")]
 mod linux {
-    use once_cell::sync::Lazy;
+    use crate::lazy::Lazy;
     use std::sync::atomic::{compiler_fence, fence, Ordering};
 
     pub fn strong_barrier() {
-        match *STRATEGY {
+        match STRATEGY.get() {
             Strategy::Membarrier => membarrier::barrier(),
             Strategy::Fallback => fence(Ordering::SeqCst),
         }
     }
 
     pub fn light_barrier() {
-        match *STRATEGY {
+        match STRATEGY.get() {
             Strategy::Membarrier => compiler_fence(Ordering::SeqCst),
             Strategy::Fallback => fence(Ordering::SeqCst),
         }

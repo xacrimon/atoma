@@ -55,3 +55,6 @@ impl Default for Collector {
         Self::new()
     }
 }
+
+unsafe impl Send for Collector {}
+unsafe impl Sync for Collector {}

@@ -7,6 +7,7 @@ use super::{
 use crate::{barrier::light_barrier, deferred::Deferred, CachePadded};
 use std::{
     cell::UnsafeCell,
+    marker::PhantomData,
     sync::{atomic::Ordering, Arc},
 };
 
@@ -132,11 +133,15 @@ unsafe impl Sync for LocalState {}
 /// `Collector::shield` every time since it avoids a table lookup to find the correct `Local`.
 pub struct Local {
     local_state: Arc<LocalState>,
+    _m0: PhantomData<*mut ()>,
 }
 
 impl Local {
     pub(crate) fn new(local_state: Arc<LocalState>) -> Self {
-        Self { local_state }
+        Self {
+            local_state,
+            _m0: PhantomData,
+        }
     }
 
     /// Creates a shield on this local.

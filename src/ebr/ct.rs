@@ -3,31 +3,40 @@ use super::global::Global;
 use super::ADVANCE_PROBABILITY;
 
 use crate::mutex::Mutex;
-use std::cell::UnsafeCell;
+use crate::CachePadded;
+use std::cell::Cell;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
-pub struct CrossThread {
-    lock: Mutex<()>,
+struct CtPaddedData {
     epoch: AtomicEpoch,
-    shields: UnsafeCell<usize>,
-    advance_counter: UnsafeCell<usize>,
+    shields: Cell<usize>,
+    advance_counter: Cell<usize>,
+}
+
+pub struct CrossThread {
+    lock: CachePadded<Mutex<()>>,
+    data: CachePadded<CtPaddedData>,
 }
 
 impl CrossThread {
     pub(crate) fn new() -> Self {
-        Self {
-            lock: Mutex::new(()),
+        let data = CachePadded::new(CtPaddedData {
             epoch: AtomicEpoch::new(Epoch::ZERO),
-            shields: UnsafeCell::new(0),
-            advance_counter: UnsafeCell::new(0),
+            shields: Cell::new(0),
+            advance_counter: Cell::new(0),
+        });
+
+        Self {
+            lock: CachePadded::new(Mutex::new(())),
+            data,
         }
     }
 
     /// This loads the epoch. Since the epoch is stored atomically and
     /// we do not modify any other state we can avoid acquiring the lock here.
     pub(crate) fn load_epoch_relaxed(&self) -> Epoch {
-        self.epoch.load(Ordering::Relaxed)
+        self.data.epoch.load(Ordering::Relaxed)
     }
 
     /// # Safety
@@ -35,11 +44,11 @@ impl CrossThread {
     /// The calling thread needs to hold the lock during this function call to
     /// synchronize access to variables.
     unsafe fn should_advance(&self, global: &Global) -> bool {
-        let advance_counter = &mut *self.advance_counter.get();
-        *advance_counter += 1;
+        let advance_counter_new = self.data.advance_counter.get() + 1;
+        self.data.advance_counter.set(advance_counter_new);
 
-        if *advance_counter == ADVANCE_PROBABILITY - 1 {
-            *advance_counter = 0;
+        if advance_counter_new == ADVANCE_PROBABILITY - 1 {
+            self.data.advance_counter.set(0);
             global.should_advance()
         } else {
             false
@@ -55,14 +64,13 @@ impl CrossThread {
     /// at a later point in time.
     pub(crate) unsafe fn enter(&self, global: &Global) {
         let lock = self.lock.lock();
-        let shields = &mut *self.shields.get();
-        let previous_shields = *shields;
-        *shields += 1;
+        let previous_shields = self.data.shields.get();;
+        self.data.shields.set(previous_shields + 1);
 
         if previous_shields == 0 {
             let global_epoch = global.load_epoch_relaxed();
             let new_epoch = global_epoch.pinned();
-            self.epoch.store(new_epoch, Ordering::Relaxed);
+            self.data.epoch.store(new_epoch, Ordering::Relaxed);
         }
 
         drop(lock);
@@ -77,12 +85,12 @@ impl CrossThread {
     /// every corresponding call to this function.
     pub(crate) unsafe fn exit(&self, global: &Arc<Global>) {
         let lock = self.lock.lock();
-        let shields = &mut *self.shields.get();
-        let previous_shields = *shields;
-        *shields -= 1;
+        let previous_shields = self.data.shields.get();
+        debug_assert!(previous_shields > 0);
+        self.data.shields.set(previous_shields - 1);
 
         if previous_shields == 1 {
-            self.epoch.store(Epoch::ZERO, Ordering::Relaxed);
+            self.data.epoch.store(Epoch::ZERO, Ordering::Relaxed);
             self.finalize(global);
         }
 

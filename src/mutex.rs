@@ -1,6 +1,6 @@
 use core::cell::UnsafeCell;
 use core::ops::{Deref, DerefMut};
-use core::sync::atomic::{fence, AtomicBool, Ordering};
+use core::sync::atomic::{fence, spin_loop_hint, AtomicBool, Ordering};
 
 const LOCKED: bool = true;
 const UNLOCKED: bool = false;
@@ -19,7 +19,10 @@ impl<T> Mutex<T> {
     }
 
     unsafe fn acquire(&self) {
-        while self.state.swap(LOCKED, Ordering::Relaxed) == LOCKED {}
+        while self.state.swap(LOCKED, Ordering::Relaxed) == LOCKED {
+            spin_loop_hint();
+        }
+
         fence(Ordering::Acquire);
     }
 

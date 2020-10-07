@@ -20,5 +20,10 @@ name = "pin-flize"
 harness = false
 
 [[bench]]
+name = "pin-full-flize"
+harness = false
+
+
+[[bench]]
 name = "pin-crossbeam"
 harness = false

@@ -26,7 +26,7 @@ fn crossbeam_epoch() {
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
-    c.bench_function("crossbeam-epoch", |b| b.iter(|| crossbeam_epoch()));
+    c.bench_function("crossbeam-epoch 2^23", |b| b.iter(|| crossbeam_epoch()));
 }
 
 criterion_group!(benches, criterion_benchmark);

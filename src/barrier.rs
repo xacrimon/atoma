@@ -12,16 +12,19 @@
 //! When no specialized implementation is available we fall back to executing a normal
 //! sequentially consistent barrier in both the light and heavy barriers.
 
-#[cfg(target_os = "windows")]
+#[cfg(all(feature = "fast-barrier", target_os = "windows"))]
 pub use windows::{light_barrier, strong_barrier};
 
-#[cfg(target_os = "linux")]
+#[cfg(all(feature = "fast-barrier", target_os = "linux"))]
 pub use linux::{light_barrier, strong_barrier};
 
-#[cfg(all(not(target_os = "linux"), not(target_os = "windows")))]
+#[cfg(any(
+    not(feature = "fast-barrier"),
+    all(not(target_os = "linux"), not(target_os = "windows"))
+))]
 pub use fallback::{light_barrier, strong_barrier};
 
-#[cfg(target_os = "windows")]
+#[cfg(all(feature = "fast-barrier", target_os = "windows"))]
 mod windows {
     use std::sync::atomic::{compiler_fence, Ordering};
     use winapi::um::processthreadsapi;
@@ -37,7 +40,7 @@ mod windows {
     }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(all(feature = "fast-barrier", target_os = "linux"))]
 mod linux {
     use crate::lazy::Lazy;
     use std::sync::atomic::{compiler_fence, fence, Ordering};
@@ -124,7 +127,10 @@ mod linux {
     }
 }
 
-#[cfg(all(not(target_os = "linux"), not(target_os = "windows")))]
+#[cfg(any(
+    not(feature = "fast-barrier"),
+    all(not(target_os = "linux"), not(target_os = "windows"))
+))]
 mod fallback {
     use std::sync::atomic::{fence, Ordering};
 

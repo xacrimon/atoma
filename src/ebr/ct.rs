@@ -64,7 +64,7 @@ impl CrossThread {
     /// at a later point in time.
     pub(crate) unsafe fn enter(&self, global: &Global) {
         let lock = self.lock.lock();
-        let previous_shields = self.data.shields.get();;
+        let previous_shields = self.data.shields.get();
         self.data.shields.set(previous_shields + 1);
 
         if previous_shields == 0 {

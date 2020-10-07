@@ -36,6 +36,12 @@
 //! and allows for arbitrary structs that can be serialized to an array of bits to
 //! be used as tags. The library will handle reading, writing and stripping these tags from and to pointers
 //! along with serialization for you with a set of helper methods on `Shared` for interacting with tags ergonomically.
+//!
+//! By default we attempt to utilize OS memory barriers to improve bookkeeping performance
+//! on Windows and Linux. For other targets we fall back to a more general although slower implementation.
+//! To make this possible we conditionally depend on `winapi` on Windows targets and `libc` on Linux targets.
+//! This accelerated bookkeeping is controlled by the `fast-barrier` Cargo feature.
+//! This flag is enabled by default and disabling it will cause the more general implementation to be compiled on all targets.
 
 mod atomic;
 mod barrier;

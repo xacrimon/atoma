@@ -60,6 +60,9 @@ pub trait Shield<'a>: Clone {
 /// This prevents one or more threads from getting starved by other threads
 /// repeatedly acquiring the lock.
 ///
+/// That said fair does not equal scalable and performance will degrade considerably
+/// under heavy contention and for this reason you should heavily prefer using a `ThinShield` instead.
+///
 /// For documentation on functionality please check the documentation of the `Shield` trait.
 pub struct FullShield<'a> {
     global: &'a Arc<Global>,

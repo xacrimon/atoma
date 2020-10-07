@@ -52,9 +52,13 @@ pub trait Shield<'a>: Clone {
 ///
 /// While the latency of creation and destruction of a `FullShield` is for the most part
 /// relatively constant it does involve accessing state protected by a `Mutex`.
-/// This means that in the unfortunate event that a thread gets preempted in this critical section
-/// creation and destruction may block. This is in constrast to the wait-free creation and destruction
-/// of a `ThinShield`.
+/// This means that the creation and destruction of a `FullShield` may be blocked by another thread.
+/// This is in constrast to the wait-free creation and lock-free destruction of a `ThinShield`.
+///
+/// In an attempt to reduce tail latency for usage in soft real time or real time
+/// applications the `Mutex` used is completely fair and the lock is always taken in FIFO order.
+/// This prevents one or more threads from getting starved by other threads
+/// repeatedly acquiring the lock.
 ///
 /// For documentation on functionality please check the documentation of the `Shield` trait.
 pub struct FullShield<'a> {

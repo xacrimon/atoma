@@ -15,7 +15,7 @@ struct CtPaddedData {
 }
 
 pub struct CrossThread {
-    lock: CachePadded<Mutex<()>>,
+    lock: Mutex<()>,
     data: CachePadded<CtPaddedData>,
 }
 
@@ -28,7 +28,7 @@ impl CrossThread {
         });
 
         Self {
-            lock: CachePadded::new(Mutex::new(())),
+            lock: Mutex::new(()),
             data,
         }
     }

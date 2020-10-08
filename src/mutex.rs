@@ -3,10 +3,17 @@ use core::cell::UnsafeCell;
 use core::ops::{Deref, DerefMut};
 use core::sync::atomic::{spin_loop_hint, AtomicUsize, Ordering};
 
+/// This is an implementation of a fair mutex based on a ticket lock.
+/// The choice of a ticket lock was made because we wanted to keep the worst case latency down.
+///
+/// This struct internally pads contended atomic variables to the cache line size.
+///
+/// The downside to this lock is that the average latency tanks when the amount of
+/// waiting threads exceed the amount of processors on the system.
 pub struct Mutex<T> {
     next_ticket: CachePadded<AtomicUsize>,
     now_serving: CachePadded<AtomicUsize>,
-    value: UnsafeCell<T>,
+    value: CachePadded<UnsafeCell<T>>,
 }
 
 impl<T> Mutex<T> {
@@ -14,13 +21,18 @@ impl<T> Mutex<T> {
         Self {
             next_ticket: CachePadded::new(AtomicUsize::new(0)),
             now_serving: CachePadded::new(AtomicUsize::new(0)),
-            value: UnsafeCell::new(value),
+            value: CachePadded::new(UnsafeCell::new(value)),
         }
     }
 
+    /// Acquire the lock and return the ticket number used to do so.
     unsafe fn acquire(&self) -> usize {
+        // Grab the next free ticket by incrementing the ticket counter.
         let ticket = self.next_ticket.fetch_add(1, Ordering::Relaxed);
 
+        // Wait until it's our turn by continously checking the ticket number.
+        // A relaxed ordering would also work here but better performance
+        // has been observed on weak architectures with an acquire load.
         while self.now_serving.load(Ordering::Acquire) != ticket {
             spin_loop_hint();
         }
@@ -28,6 +40,9 @@ impl<T> Mutex<T> {
         ticket
     }
 
+    /// This function moves the current thread out of the line and increments the ticket number.
+    /// We can use a store instead of a CAS here because only one thread may execute this function
+    /// at any given time since it may only be executed while holding the lock.
     unsafe fn release(&self, ticket: usize) {
         let next_ticket = ticket.wrapping_add(1);
         self.now_serving.store(next_ticket, Ordering::Release);

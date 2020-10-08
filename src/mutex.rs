@@ -21,18 +21,16 @@ impl<T> Mutex<T> {
     unsafe fn acquire(&self) -> usize {
         let ticket = self.next_ticket.fetch_add(1, Ordering::Relaxed);
 
-        while self.now_serving.load(Ordering::Relaxed) != ticket {
+        while self.now_serving.load(Ordering::Acquire) != ticket {
             spin_loop_hint();
         }
 
-        fence(Ordering::Acquire);
         ticket
     }
 
     unsafe fn release(&self, ticket: usize) {
         let next_ticket = ticket.wrapping_add(1);
-        self.now_serving.store(next_ticket, Ordering::Relaxed);
-        fence(Ordering::Release);
+        self.now_serving.store(next_ticket, Ordering::Release);
     }
 
     pub fn lock(&self) -> MutexGuard<'_, T> {

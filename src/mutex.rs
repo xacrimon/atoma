@@ -1,7 +1,7 @@
 use crate::CachePadded;
 use core::cell::UnsafeCell;
 use core::ops::{Deref, DerefMut};
-use core::sync::atomic::{fence, spin_loop_hint, AtomicUsize, Ordering};
+use core::sync::atomic::{spin_loop_hint, AtomicUsize, Ordering};
 
 pub struct Mutex<T> {
     next_ticket: CachePadded<AtomicUsize>,

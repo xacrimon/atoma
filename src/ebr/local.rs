@@ -40,14 +40,13 @@ impl LocalState {
     /// It may only be called from the thread owning this `LocalState` instance.
     unsafe fn should_advance(&self) -> bool {
         let advance_counter = &mut *self.advance_counter.get();
-        let previous_advance_counter = *advance_counter;
+        *advance_counter += 1;
 
-        if previous_advance_counter == ADVANCE_PROBABILITY - 1 {
+        if *advance_counter != ADVANCE_PROBABILITY {
+            false
+        } else {
             *advance_counter = 0;
             self.global.should_advance()
-        } else {
-            *advance_counter = previous_advance_counter + 1;
-            false
         }
     }
 

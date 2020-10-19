@@ -152,7 +152,10 @@ where
     }
 }
 
-impl<T> Drop for Queue<T> where T: Send + Sync {
+impl<T> Drop for Queue<T>
+where
+    T: Send + Sync,
+{
     fn drop(&mut self) {
         let shield = unsafe { unprotected() };
         while let Some(_) = self.pop_if(|_| true, shield) {}

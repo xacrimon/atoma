@@ -1,4 +1,4 @@
-use crate::{Atomic, CachePadded, Shared, Shield};
+use crate::{unprotected, Atomic, CachePadded, Shared, Shield};
 use std::{
     cell::UnsafeCell,
     mem::{self, MaybeUninit},
@@ -149,6 +149,16 @@ where
         }
 
         None
+    }
+}
+
+impl<T> Drop for Queue<T>
+where
+    T: Send + Sync,
+{
+    fn drop(&mut self) {
+        let shield = unsafe { unprotected() };
+        while let Some(_) = self.pop_if(|_| true, shield) {}
     }
 }
 

@@ -68,6 +68,12 @@ impl AtomicEpoch {
         self.raw.store(raw, order);
     }
 
+    pub fn compare_and_set_non_unique(&self, current: Epoch, new: Epoch, order: Ordering) {
+        let current_raw = current.into_raw();
+        let new_raw = new.into_raw();
+        self.raw.compare_and_swap(current_raw, new_raw, order);
+    }
+
     pub fn try_advance(&self, current: Epoch) -> Result<Epoch, ()> {
         let current_raw = current.into_raw();
         let next = current.next();

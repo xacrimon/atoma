@@ -130,6 +130,12 @@ impl Global {
     }
 
     fn try_advance(&self) -> Result<Epoch, ()> {
+        let mod_acc_pre = self.threads.mod_acc();
+
+        if mod_acc_pre % 2 != 0 {
+            return Err(());
+        }
+
         let global_epoch = self.global_epoch.load(Ordering::Relaxed);
         strong_barrier();
         let ct_epoch = self.ct.load_epoch_relaxed();
@@ -144,7 +150,13 @@ impl Global {
                 .all(|epoch| epoch.unpinned() == global_epoch);
 
         if can_collect {
-            self.global_epoch.try_advance(global_epoch)
+            let res = self.global_epoch.try_advance(global_epoch);
+
+            if self.threads.mod_acc() == mod_acc_pre {
+                res
+            } else {
+                Err(())
+            }
         } else {
             Err(())
         }

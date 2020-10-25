@@ -16,6 +16,7 @@ use table::Table;
 pub struct ThreadLocal<T: Send + Sync> {
     table: AtomicPtr<Table<T>>,
     len: AtomicUsize,
+    mod_acc: AtomicUsize,
 }
 
 impl<T: Send + Sync> ThreadLocal<T> {
@@ -26,7 +27,12 @@ impl<T: Send + Sync> ThreadLocal<T> {
         Self {
             table: AtomicPtr::new(table_ptr),
             len: AtomicUsize::new(0),
+            mod_acc: AtomicUsize::new(0),
         }
+    }
+
+    pub fn mod_acc(&self) -> usize {
+        self.mod_acc.load(Ordering::SeqCst)
     }
 
     /// Get the value for this thread or initialize it with the given function if it doesn't exist.

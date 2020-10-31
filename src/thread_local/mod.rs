@@ -4,7 +4,7 @@ mod thread_id;
 
 use std::{
     marker::PhantomData,
-    sync::atomic::{AtomicPtr, AtomicUsize, Ordering},
+    sync::atomic::{fence, AtomicPtr, AtomicUsize, Ordering},
 };
 use table::Table;
 
@@ -99,6 +99,8 @@ impl<T: Send + Sync> ThreadLocal<T> {
     /// # Safety
     /// A key may not be inserted two times with the same top level table.
     unsafe fn insert(&self, key: usize, data: *mut T, new: bool) -> &T {
+        self.mod_acc.fetch_add(1, Ordering::SeqCst);
+
         loop {
             let table = self.table(Ordering::Acquire);
 
@@ -132,6 +134,8 @@ impl<T: Send + Sync> ThreadLocal<T> {
                 self.len.fetch_add(1, Ordering::Release);
             }
 
+            self.mod_acc.fetch_add(1, Ordering::SeqCst);
+            fence(Ordering::SeqCst);
             break &*data;
         }
     }

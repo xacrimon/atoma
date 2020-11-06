@@ -8,6 +8,7 @@ pub use local::Local;
 pub use shield::{unprotected, CowShield, FullShield, Shield, ThinShield, UnprotectedShield};
 
 use global::Global;
+use std::fmt;
 use std::sync::Arc;
 
 const ADVANCE_PROBABILITY: usize = 128;
@@ -58,3 +59,9 @@ impl Default for Collector {
 
 unsafe impl Send for Collector {}
 unsafe impl Sync for Collector {}
+
+impl fmt::Debug for Collector {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.pad("Collector { .. }")
+    }
+}

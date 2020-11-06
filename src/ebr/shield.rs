@@ -1,11 +1,12 @@
 use super::global::Global;
 use super::local::LocalState;
 use crate::deferred::Deferred;
+use std::fmt;
 use std::marker::PhantomData;
 use std::sync::Arc;
 
 /// Universal methods for any shield implementation.
-pub trait Shield<'a>: Clone {
+pub trait Shield<'a>: Clone + fmt::Debug {
     /// Attempt to synchronize the current thread to allow advancing the global epoch.
     /// This might be useful to call every once in a while if you plan on holding a `Shield`
     /// for an extended amount of time as to not stop garbage collection.
@@ -114,6 +115,12 @@ impl<'a> Drop for FullShield<'a> {
 unsafe impl<'a> Send for FullShield<'a> {}
 unsafe impl<'a> Sync for FullShield<'a> {}
 
+impl<'a> fmt::Debug for FullShield<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.pad("FullShield { .. }")
+    }
+}
+
 /// A `ThinShield` locks an epoch and is needed to manipulate protected atomic pointers.
 /// It is a type level contract so that you are forces to acquire one before manipulating pointers.
 /// This reduces common mistakes drastically since incorrect code will now fail at compile time.
@@ -184,6 +191,12 @@ impl<'a> Drop for ThinShield<'a> {
     }
 }
 
+impl<'a> fmt::Debug for ThinShield<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.pad("ThinShield { .. }")
+    }
+}
+
 /// An `UnprotectedShield` is a shield that does not actually lock an epoch, but can still be used to
 /// manipulate protected atomic pointers.
 /// Obtaining an `UnprotectedShield` is unsafe, since it allows unsafe access to atomics, and is only
@@ -219,6 +232,12 @@ impl<'a> Shield<'a> for UnprotectedShield {
         F: FnOnce() + 'a,
     {
         f();
+    }
+}
+
+impl fmt::Debug for UnprotectedShield {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.pad("UnprotectedShield { .. }")
     }
 }
 
@@ -280,7 +299,7 @@ pub unsafe fn unprotected() -> &'static UnprotectedShield {
 
 /// This is a utility type that allows you to either take a reference to a shield
 /// and be bound by the lifetime of it or take an owned shield use `'static`.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum CowShield<'collector, 'shield, S>
 where
     S: Shield<'collector>,

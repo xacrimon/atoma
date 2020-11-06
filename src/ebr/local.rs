@@ -7,6 +7,7 @@ use super::{
 use crate::{barrier::light_barrier, deferred::Deferred, CachePadded};
 use std::{
     cell::UnsafeCell,
+    fmt,
     marker::PhantomData,
     sync::{atomic::Ordering, Arc},
 };
@@ -151,5 +152,11 @@ impl Local {
     /// Returns true if this local has active shields and it's epoch is pinned.
     pub fn is_pinned(&self) -> bool {
         self.local_state.is_pinned()
+    }
+}
+
+impl fmt::Debug for Local {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.pad("Local { .. }")
     }
 }

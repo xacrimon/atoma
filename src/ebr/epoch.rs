@@ -79,12 +79,9 @@ impl AtomicEpoch {
         let next = current.next();
         let next_raw = next.into_raw();
 
-        let did_advance = self.raw.compare_exchange_weak(
-            current_raw,
-            next_raw,
-            Ordering::AcqRel,
-            Ordering::Relaxed,
-        );
+        let did_advance =
+            self.raw
+                .compare_exchange(current_raw, next_raw, Ordering::AcqRel, Ordering::Relaxed);
 
         if did_advance.is_ok() {
             Ok(next)

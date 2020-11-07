@@ -30,7 +30,7 @@ impl LocalState {
     }
 
     pub(crate) fn definitive_epoch(&self) -> DefinitiveEpoch {
-        DefinitiveEpoch::from(self.global.definitive_epoch())
+        self.global.definitive_epoch()
     }
 
     /// This function loads the epoch without any ordering constraints.

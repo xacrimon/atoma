@@ -1,5 +1,6 @@
 use crate::{NullTag, Shared, Shield, Tag};
 use std::{
+    fmt,
     marker::PhantomData,
     mem,
     sync::atomic::{AtomicUsize, Ordering},
@@ -185,4 +186,23 @@ where
     T1: Tag,
     T2: Tag,
 {
+}
+
+impl<V, T1, T2> fmt::Debug for Atomic<V, T1, T2>
+where
+    T1: Tag,
+    T2: Tag,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use crate::tag;
+        let data = self.data.load(Ordering::SeqCst);
+        let lo = tag::read_tag::<T1>(data, tag::TagPosition::Lo);
+        let hi = tag::read_tag::<T2>(data, tag::TagPosition::Hi);
+
+        f.debug_struct("Atomic")
+            .field("raw", &data)
+            .field("low_tag", &lo)
+            .field("high_tag", &hi)
+            .finish()
+    }
 }

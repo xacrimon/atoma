@@ -10,6 +10,7 @@ use std::ops::{Deref, DerefMut};
     not(any(target_arch = "x86_64", target_arch = "aarch64")),
     repr(align(64))
 )]
+#[derive(Debug)]
 pub struct CachePadded<T> {
     value: T,
 }

@@ -26,7 +26,7 @@ pub use fallback::{light_barrier, strong_barrier};
 
 #[cfg(all(feature = "fast-barrier", target_os = "windows"))]
 mod windows {
-    use std::sync::atomic::{compiler_fence, Ordering};
+    use core::sync::atomic::{compiler_fence, Ordering};
     use winapi::um::processthreadsapi;
 
     pub fn strong_barrier() {
@@ -43,7 +43,7 @@ mod windows {
 #[cfg(all(feature = "fast-barrier", target_os = "linux"))]
 mod linux {
     use crate::lazy::Lazy;
-    use std::sync::atomic::{compiler_fence, fence, Ordering};
+    use core::sync::atomic::{compiler_fence, fence, Ordering};
 
     pub fn strong_barrier() {
         match STRATEGY.get() {
@@ -132,7 +132,7 @@ mod linux {
     all(not(target_os = "linux"), not(target_os = "windows"))
 ))]
 mod fallback {
-    use std::sync::atomic::{fence, Ordering};
+    use core::sync::atomic::{fence, Ordering};
 
     pub fn strong_barrier() {
         fence(Ordering::SeqCst);

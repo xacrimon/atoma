@@ -1,5 +1,5 @@
 use crate::{unprotected, Atomic, CachePadded, Shared, Shield};
-use std::{
+use core::{
     cell::UnsafeCell,
     mem::{self, MaybeUninit},
     ptr,

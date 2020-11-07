@@ -2,7 +2,7 @@ mod priority_queue;
 mod table;
 mod thread_id;
 
-use std::{
+use core::{
     marker::PhantomData,
     sync::atomic::{fence, AtomicPtr, AtomicUsize, Ordering},
 };

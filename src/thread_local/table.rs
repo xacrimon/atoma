@@ -1,5 +1,5 @@
 use super::thread_id;
-use std::{
+use core::{
     mem, ptr,
     sync::atomic::{AtomicPtr, Ordering},
 };

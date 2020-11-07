@@ -1,5 +1,5 @@
 use crate::{NullTag, Shared, Shield, Tag};
-use std::{
+use core::{
     fmt,
     marker::PhantomData,
     mem,

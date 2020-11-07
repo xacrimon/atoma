@@ -2,9 +2,9 @@ use super::global::Global;
 use super::local::LocalState;
 use super::DefinitiveEpoch;
 use crate::deferred::Deferred;
-use std::fmt;
-use std::marker::PhantomData;
+use core::marker::PhantomData;
 use std::sync::Arc;
+use core::fmt;
 
 /// Universal methods for any shield implementation.
 pub trait Shield<'a>: Clone + fmt::Debug {

@@ -1,7 +1,7 @@
 use crate::tag::{read_tag, set_tag, strip, NullTag, Tag, TagPosition};
-use std::fmt::{self, Debug};
-use std::marker::PhantomData;
-use std::ptr;
+use core::fmt::{self, Debug};
+use core::marker::PhantomData;
+use core::ptr;
 
 /// A `Shared` represents a tagged pointer.
 /// It provides various utility methods for type conversion

@@ -3,6 +3,7 @@ use super::{
     epoch::{AtomicEpoch, Epoch},
     local::{Local, LocalState},
     shield::{FullShield, Shield, ThinShield},
+    DefinitiveEpoch,
 };
 use crate::{
     barrier::strong_barrier, deferred::Deferred, queue::Queue, thread_local::ThreadLocal,
@@ -82,6 +83,10 @@ impl Global {
 
     pub(crate) fn load_epoch_relaxed(&self) -> Epoch {
         self.global_epoch.load(Ordering::Relaxed)
+    }
+
+    pub(crate) fn definitive_epoch(&self) -> DefinitiveEpoch {
+        DefinitiveEpoch::from(self.global_epoch.load(Ordering::SeqCst))
     }
 
     pub(crate) fn retire<'a, S>(&self, deferred: Deferred, shield: &S)

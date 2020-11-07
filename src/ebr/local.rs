@@ -2,7 +2,7 @@ use super::{
     epoch::{AtomicEpoch, Epoch},
     global::Global,
     shield::{Shield, ThinShield},
-    ADVANCE_PROBABILITY,
+    DefinitiveEpoch, ADVANCE_PROBABILITY,
 };
 use crate::{barrier::light_barrier, deferred::Deferred, CachePadded};
 use std::{
@@ -27,6 +27,10 @@ impl LocalState {
             shields: UnsafeCell::new(0),
             advance_counter: UnsafeCell::new(0),
         }
+    }
+
+    pub(crate) fn definitive_epoch(&self) -> DefinitiveEpoch {
+        DefinitiveEpoch::from(self.global.definitive_epoch())
     }
 
     /// This function loads the epoch without any ordering constraints.

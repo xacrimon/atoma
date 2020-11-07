@@ -1,5 +1,6 @@
 use super::global::Global;
 use super::local::LocalState;
+use super::DefinitiveEpoch;
 use crate::deferred::Deferred;
 use std::fmt;
 use std::marker::PhantomData;
@@ -57,11 +58,19 @@ pub trait Shield<'a>: Clone + fmt::Debug {
 /// For documentation on functionality please check the documentation of the `Shield` trait.
 pub struct FullShield<'a> {
     global: &'a Arc<Global>,
+
+    #[cfg(debug_assertions)]
+    created_in: DefinitiveEpoch,
 }
 
 impl<'a> FullShield<'a> {
     pub(crate) fn new(global: &'a Arc<Global>) -> Self {
-        Self { global }
+        Self {
+            global,
+
+            #[cfg(debug_assertions)]
+            created_in: global.definitive_epoch(),
+        }
     }
 }
 
@@ -105,6 +114,8 @@ impl<'a> Clone for FullShield<'a> {
 
 impl<'a> Drop for FullShield<'a> {
     fn drop(&mut self) {
+        debug_assert_eq!(self.created_in, self.global.definitive_epoch());
+
         // this is okay since we shall have called enter upon construction of this shield object
         unsafe {
             self.global.ct.exit(self.global);
@@ -129,6 +140,9 @@ impl<'a> fmt::Debug for FullShield<'a> {
 pub struct ThinShield<'a> {
     local_state: &'a LocalState,
     _m0: PhantomData<*mut ()>,
+
+    #[cfg(debug_assertions)]
+    created_in: DefinitiveEpoch,
 }
 
 impl<'a> ThinShield<'a> {
@@ -136,6 +150,9 @@ impl<'a> ThinShield<'a> {
         Self {
             local_state,
             _m0: PhantomData,
+
+            #[cfg(debug_assertions)]
+            created_in: local_state.definitive_epoch(),
         }
     }
 }
@@ -184,6 +201,8 @@ impl<'a> Clone for ThinShield<'a> {
 
 impl<'a> Drop for ThinShield<'a> {
     fn drop(&mut self) {
+        debug_assert_eq!(self.created_in, self.local_state.definitive_epoch());
+
         // this is okay since we shall have called enter upon construction of this shield object
         unsafe {
             self.local_state.exit();

@@ -13,7 +13,7 @@ use std::{
     mem::MaybeUninit,
     ptr,
     sync::{
-        atomic::{AtomicIsize, Ordering},
+        atomic::{fence, AtomicIsize, Ordering},
         Arc,
     },
 };
@@ -110,8 +110,9 @@ impl Global {
 
     pub(crate) fn try_cycle(&self, local_state: &LocalState) -> Result<usize, ()> {
         if let Ok(epoch) = self.try_advance() {
-            let safe_epoch = epoch.next();
             let shield = local_state.thin_shield();
+            fence(Ordering::SeqCst);
+            let safe_epoch = epoch.next();
 
             unsafe { Ok(self.internal_collect(safe_epoch, &shield)) }
         } else {
@@ -145,6 +146,7 @@ impl Global {
         strong_barrier();
         let ct_epoch = self.ct.load_epoch_relaxed();
         let ct_is_sync = !ct_epoch.is_pinned() || ct_epoch == global_epoch;
+        let mut chck_count = 0;
 
         let can_collect = ct_is_sync
             && self
@@ -152,7 +154,12 @@ impl Global {
                 .iter()
                 .map(|state| state.load_epoch_relaxed())
                 .filter(|epoch| epoch.is_pinned())
-                .all(|epoch| epoch.unpinned() == global_epoch);
+                .map(|x| {
+                    chck_count += 1;
+                    x
+                })
+                .all(|epoch| epoch.unpinned() == global_epoch)
+            && chck_count == self.threads.len();
 
         if can_collect {
             let res = self.global_epoch.try_advance(global_epoch);

@@ -31,6 +31,10 @@ impl<T: Send + Sync> ThreadLocal<T> {
         }
     }
 
+    pub fn len(&self) -> usize {
+        self.len.load(Ordering::SeqCst)
+    }
+
     pub fn mod_acc(&self) -> usize {
         self.mod_acc.load(Ordering::SeqCst)
     }

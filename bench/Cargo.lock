@@ -21,7 +21,7 @@ version = "0.1.0"
 dependencies = [
  "criterion 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "crossbeam-epoch 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "flize 4.1.2",
+ "flize 4.2.1",
  "num_cpus 1.13.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -178,7 +178,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "flize"
-version = "4.1.2"
+version = "4.2.1"
 dependencies = [
  "generic-array 0.14.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.77 (registry+https://github.com/rust-lang/crates.io-index)",

@@ -1,6 +1,5 @@
 use super::global::Global;
 use super::local::LocalState;
-use super::DefinitiveEpoch;
 use crate::deferred::Deferred;
 use core::marker::PhantomData;
 use std::sync::Arc;

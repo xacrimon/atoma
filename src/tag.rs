@@ -1,8 +1,8 @@
+use core::mem;
 use generic_array::{
     typenum::{UTerm, Unsigned},
     ArrayLength, GenericArray,
 };
-use std::mem;
 
 pub enum TagPosition {
     Lo,

@@ -57,7 +57,8 @@ mod thread_local;
 pub use atomic::Atomic;
 pub use cache_padded::CachePadded;
 pub use ebr::{
-    unprotected, Collector, CowShield, FullShield, Local, Shield, ThinShield, UnprotectedShield,
+    unprotected, Collector, CowShield, DefinitiveEpoch, FullShield, Local, Shield, ThinShield,
+    UnprotectedShield,
 };
 pub use shared::Shared;
 pub use tag::{NullTag, Tag};

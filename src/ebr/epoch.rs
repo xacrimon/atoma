@@ -47,6 +47,15 @@ impl PartialEq for Epoch {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct DefinitiveEpoch(pub u64);
+
+impl From<Epoch> for DefinitiveEpoch {
+    fn from(epoch: Epoch) -> Self {
+        Self(epoch.data)
+    }
+}
+
 pub struct AtomicEpoch {
     raw: AtomicU64,
 }
@@ -79,17 +88,29 @@ impl AtomicEpoch {
         let next = current.next();
         let next_raw = next.into_raw();
 
-        let did_advance = self.raw.compare_exchange_weak(
-            current_raw,
-            next_raw,
-            Ordering::AcqRel,
-            Ordering::Relaxed,
-        );
+        let did_advance =
+            self.raw
+                .compare_exchange(current_raw, next_raw, Ordering::SeqCst, Ordering::Relaxed);
 
         if did_advance.is_ok() {
             Ok(next)
         } else {
             Err(())
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Epoch;
+
+    #[test]
+    fn pin_check() {
+        let epoch = Epoch::ZERO;
+        assert!(!epoch.is_pinned());
+        let pinned = epoch.pinned();
+        assert!(pinned.is_pinned());
+        let unpinned_next = epoch.unpinned().next();
+        assert!(!unpinned_next.is_pinned());
     }
 }

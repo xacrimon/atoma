@@ -2,7 +2,7 @@ mod priority_queue;
 mod table;
 mod thread_id;
 
-use std::{
+use core::{
     marker::PhantomData,
     sync::atomic::{fence, AtomicPtr, AtomicUsize, Ordering},
 };
@@ -29,6 +29,10 @@ impl<T: Send + Sync> ThreadLocal<T> {
             len: AtomicUsize::new(0),
             mod_acc: AtomicUsize::new(0),
         }
+    }
+
+    pub fn len(&self) -> usize {
+        self.len.load(Ordering::SeqCst)
     }
 
     pub fn mod_acc(&self) -> usize {

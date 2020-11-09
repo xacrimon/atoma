@@ -9,14 +9,12 @@ use crate::{
     barrier::strong_barrier, deferred::Deferred, queue::Queue, thread_local::ThreadLocal,
     CachePadded,
 };
-use std::{
+use core::{
     mem::MaybeUninit,
     ptr,
-    sync::{
-        atomic::{fence, AtomicIsize, Ordering},
-        Arc,
-    },
+    sync::atomic::{fence, AtomicIsize, Ordering},
 };
+use std::sync::Arc;
 
 struct DeferredItem {
     epoch: Epoch,

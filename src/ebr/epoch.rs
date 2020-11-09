@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicU64, Ordering};
+use core::sync::atomic::{AtomicU64, Ordering};
 
 const PIN_MASK: u64 = std::u64::MAX >> 1;
 

@@ -28,10 +28,10 @@ impl TagPosition {
 /// Zeroes all the tag bits.
 pub fn strip<T1: Tag, T2: Tag>(data: usize) -> usize {
     // mask for zeroing the low tag
-    let mask1: usize = std::usize::MAX >> <T1::Size as Unsigned>::to_usize();
+    let mask1: usize = core::usize::MAX >> <T1::Size as Unsigned>::to_usize();
 
     // mask for zeroing the high tag
-    let mask2: usize = std::usize::MAX << <T2::Size as Unsigned>::to_usize();
+    let mask2: usize = core::usize::MAX << <T2::Size as Unsigned>::to_usize();
 
     // apply the masks with an AND to zero the bits
     data & mask1 & mask2

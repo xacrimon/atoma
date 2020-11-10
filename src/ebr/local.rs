@@ -5,12 +5,8 @@ use super::{
     ADVANCE_PROBABILITY,
 };
 use crate::{barrier::light_barrier, deferred::Deferred, CachePadded};
-use std::{
-    cell::UnsafeCell,
-    fmt,
-    marker::PhantomData,
-    sync::{atomic::Ordering, Arc},
-};
+use core::{cell::UnsafeCell, fmt, marker::PhantomData, sync::atomic::Ordering};
+use std::sync::Arc;
 
 pub(crate) struct LocalState {
     global: Arc<Global>,

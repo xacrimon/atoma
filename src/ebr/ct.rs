@@ -2,7 +2,7 @@ use super::epoch::{AtomicEpoch, Epoch};
 use super::global::Global;
 use crate::barrier::light_barrier;
 use crate::CachePadded;
-use std::sync::atomic::{fence, AtomicIsize, Ordering};
+use core::sync::atomic::{fence, AtomicIsize, Ordering};
 use std::sync::Arc;
 
 pub struct CrossThread {

@@ -8,8 +8,8 @@ pub use epoch::DefinitiveEpoch;
 pub use local::Local;
 pub use shield::{unprotected, CowShield, FullShield, Shield, ThinShield, UnprotectedShield};
 
+use core::fmt;
 use global::Global;
-use std::fmt;
 use std::sync::Arc;
 
 const ADVANCE_PROBABILITY: usize = 128;

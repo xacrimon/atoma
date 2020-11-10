@@ -34,6 +34,7 @@ impl<T> Mutex<T> {
         unsafe { &*self.data.get() }
     }
 
+    #[allow(clippy::mut_from_ref)]
     fn get_unique(&self) -> &mut T {
         unsafe { &mut *self.data.get() }
     }

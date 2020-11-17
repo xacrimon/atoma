@@ -43,6 +43,7 @@
 //! This accelerated bookkeeping is controlled by the `fast-barrier` Cargo feature.
 //! This flag is enabled by default and disabling it will cause the more general implementation to be compiled on all targets.
 
+pub mod alloc;
 mod atomic;
 mod barrier;
 mod cache_padded;

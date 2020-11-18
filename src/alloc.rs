@@ -30,6 +30,29 @@ impl Layout {
     }
 }
 
+pub trait Allocator {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8;
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout);
+}
+
+pub struct GlobalAllocator;
+
+impl Allocator for GlobalAllocator {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        let std_layout =
+            std::alloc::Layout::from_size_align_unchecked(layout.size(), layout.align());
+
+        std::alloc::alloc(std_layout)
+    }
+
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        let std_layout =
+            std::alloc::Layout::from_size_align_unchecked(layout.size(), layout.align());
+
+        std::alloc::dealloc(ptr, std_layout)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{round_up, Layout};
@@ -43,8 +66,13 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn incorrect_align_test() {
+    fn incorrect_align_test_1() {
         Layout::new(16, 18);
+    }
+
+    #[test]
+    #[should_panic]
+    fn incorrect_align_test_2() {
         Layout::new(16, 1953);
     }
 }

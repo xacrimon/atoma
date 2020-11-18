@@ -55,7 +55,7 @@ impl Allocator for GlobalAllocator {
 
 #[cfg(test)]
 mod tests {
-    use super::{round_up, Layout};
+    use super::{round_up, Allocator, GlobalAllocator, Layout};
 
     #[test]
     fn check_round_up() {
@@ -74,5 +74,21 @@ mod tests {
     #[should_panic]
     fn incorrect_align_test_2() {
         Layout::new(16, 1953);
+    }
+
+    #[test]
+    fn global_allocator() {
+        let layout = Layout::new(1024, 64);
+
+        unsafe {
+            let a = GlobalAllocator.alloc(layout);
+            let b = GlobalAllocator.alloc(layout);
+            let c = GlobalAllocator.alloc(layout);
+            let d = GlobalAllocator.alloc(layout);
+            GlobalAllocator.dealloc(a, layout);
+            GlobalAllocator.dealloc(b, layout);
+            GlobalAllocator.dealloc(c, layout);
+            GlobalAllocator.dealloc(d, layout);
+        }
     }
 }

@@ -1,4 +1,4 @@
-fn round_up(num: usize, factor: usize) -> usize {
+fn round_up_fp2(num: usize, factor: usize) -> usize {
     num.wrapping_add(factor)
         .wrapping_sub(1)
         .wrapping_sub((num.wrapping_add(factor).wrapping_sub(1)).wrapping_rem(factor))
@@ -13,7 +13,7 @@ pub struct Layout {
 impl Layout {
     pub fn new(size: usize, align: usize) -> Self {
         assert!(align != 0 && align.is_power_of_two());
-        assert!(round_up(size, align) >= size);
+        assert!(round_up_fp2(size, align) >= size);
         unsafe { Self::from_size_align_unchecked(size, align) }
     }
 
@@ -55,13 +55,13 @@ impl Allocator for GlobalAllocator {
 
 #[cfg(test)]
 mod tests {
-    use super::{round_up, Allocator, GlobalAllocator, Layout};
+    use super::{round_up_fp2, Allocator, GlobalAllocator, Layout};
 
     #[test]
-    fn check_round_up() {
-        assert_eq!(round_up(5, 32), 32);
-        assert_eq!(round_up(753, 512), 1024);
-        assert_eq!(round_up(753, 256), 768);
+    fn check_round_up_fp2() {
+        assert_eq!(round_up_fp2(5, 32), 32);
+        assert_eq!(round_up_fp2(753, 512), 1024);
+        assert_eq!(round_up_fp2(753, 256), 768);
     }
 
     #[test]

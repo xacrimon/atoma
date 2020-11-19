@@ -28,16 +28,22 @@ impl Layout {
     pub fn align(&self) -> usize {
         self.align
     }
+
+    pub fn of<T>() -> Self {
+        let std_layout = std::alloc::Layout::new::<T>();
+        unsafe { Self::from_size_align_unchecked(std_layout.size(), std_layout.align()) }
+    }
 }
 
-pub trait Allocator {
+pub trait AllocRef: Clone {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8;
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout);
 }
 
+#[derive(Clone, Copy)]
 pub struct GlobalAllocator;
 
-impl Allocator for GlobalAllocator {
+impl AllocRef for GlobalAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         let std_layout =
             std::alloc::Layout::from_size_align_unchecked(layout.size(), layout.align());
@@ -55,7 +61,7 @@ impl Allocator for GlobalAllocator {
 
 #[cfg(test)]
 mod tests {
-    use super::{round_up_fp2, Allocator, GlobalAllocator, Layout};
+    use super::{round_up_fp2, AllocRef, GlobalAllocator, Layout};
 
     #[test]
     fn check_round_up_fp2() {

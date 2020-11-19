@@ -1,4 +1,4 @@
-fn round_up_fp2(num: usize, factor: usize) -> usize {
+pub fn round_up_fp2(num: usize, factor: usize) -> usize {
     num.wrapping_add(factor)
         .wrapping_sub(1)
         .wrapping_sub((num.wrapping_add(factor).wrapping_sub(1)).wrapping_rem(factor))

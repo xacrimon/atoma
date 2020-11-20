@@ -13,8 +13,7 @@ const BUFFER_SIZE: usize = 256;
 
 pub struct Queue<T, A>
 where
-    T: Send + Sync,
-    A: Send + Sync + AllocRef,
+    A: AllocRef,
 {
     head: CachePadded<Atomic<Node<T>>>,
     tail: CachePadded<Atomic<Node<T>>>,
@@ -23,8 +22,7 @@ where
 
 impl<T, A> Queue<T, A>
 where
-    T: Send + Sync,
-    A: Send + Sync + AllocRef,
+    A: AllocRef,
 {
     pub fn new(allocator: A) -> Self {
         let sentinel = Node::new(None, 0, &allocator);
@@ -157,13 +155,26 @@ where
 
 impl<T, A> Drop for Queue<T, A>
 where
-    T: Send + Sync,
-    A: AllocRef + Send + Sync,
+    A: AllocRef,
 {
     fn drop(&mut self) {
         let shield = unsafe { unprotected() };
         while let Some(_) = self.pop_if(|_| true, shield) {}
     }
+}
+
+unsafe impl<T, A> Send for Queue<T, A>
+where
+    T: Send,
+    A: Send + AllocRef,
+{
+}
+
+unsafe impl<T, A> Sync for Queue<T, A>
+where
+    T: Send + Sync,
+    A: Send + Sync + AllocRef,
+{
 }
 
 struct Node<T> {

@@ -1,4 +1,7 @@
-use crate::{unprotected, Atomic, CachePadded, Shared, Shield};
+use crate::{
+    alloc::{AllocRef, Layout},
+    unprotected, Atomic, CachePadded, Shared, Shield,
+};
 use core::{
     cell::UnsafeCell,
     mem::{self, MaybeUninit},
@@ -8,24 +11,28 @@ use core::{
 
 const BUFFER_SIZE: usize = 256;
 
-pub struct Queue<T>
+pub struct Queue<T, A>
 where
     T: Send + Sync,
+    A: Send + Sync + AllocRef,
 {
     head: CachePadded<Atomic<Node<T>>>,
     tail: CachePadded<Atomic<Node<T>>>,
+    allocator: A,
 }
 
-impl<T> Queue<T>
+impl<T, A> Queue<T, A>
 where
     T: Send + Sync,
+    A: Send + Sync + AllocRef,
 {
-    pub fn new() -> Self {
-        let sentinel = Node::new(None, 0);
+    pub fn new(allocator: A) -> Self {
+        let sentinel = Node::new(None, 0, &allocator);
 
         Self {
             head: CachePadded::new(Atomic::new(sentinel)),
             tail: CachePadded::new(Atomic::new(sentinel)),
+            allocator,
         }
     }
 
@@ -68,16 +75,15 @@ where
                 let lnext = ltail_ref.next.load(Ordering::SeqCst, shield);
 
                 if lnext.is_null() {
-                    let new_node = Node::new(Some(unsafe { ptr::read(&value) }), 1);
+                    let new_node =
+                        Node::new(Some(unsafe { ptr::read(&value) }), 1, &self.allocator);
 
                     if ltail_ref.cas_next(Shared::null(), new_node, shield) {
                         self.cas_tail(ltail, new_node, shield);
                         mem::forget(value);
                         return;
                     } else {
-                        unsafe {
-                            Box::from_raw(new_node.as_ptr());
-                        }
+                        Node::destroy(new_node, &self.allocator);
                     }
                 } else {
                     self.cas_tail(ltail, lnext, shield);
@@ -118,11 +124,8 @@ where
                 }
 
                 if self.cas_head(lhead, lnext, shield) {
-                    let ptr = lhead.as_ptr();
-
-                    shield.retire(move || unsafe {
-                        Box::from_raw(ptr);
-                    })
+                    let allocator = self.allocator.clone();
+                    shield.retire(move || Node::destroy(lhead, &allocator));
                 }
 
                 continue;
@@ -152,9 +155,10 @@ where
     }
 }
 
-impl<T> Drop for Queue<T>
+impl<T, A> Drop for Queue<T, A>
 where
     T: Send + Sync,
+    A: AllocRef + Send + Sync,
 {
     fn drop(&mut self) {
         let shield = unsafe { unprotected() };
@@ -171,7 +175,10 @@ struct Node<T> {
 }
 
 impl<T> Node<T> {
-    fn new<'a>(maybe_item: Option<T>, enqidx: usize) -> Shared<'a, Self> {
+    fn new<'a, A>(maybe_item: Option<T>, enqidx: usize, allocator: &A) -> Shared<'a, Self>
+    where
+        A: AllocRef,
+    {
         let first_entry = Entry::new();
 
         if let Some(item) = maybe_item {
@@ -445,7 +452,26 @@ impl<T> Node<T> {
             ],
         };
 
-        unsafe { Shared::from_ptr(Box::into_raw(Box::new(node))) }
+        let layout = Layout::of::<Self>();
+
+        unsafe {
+            let ptr = allocator.alloc(layout) as *mut Self;
+            ptr::write(ptr, node);
+            ptr
+        }
+    }
+
+    fn destroy<'a, A>(instance: Shared<'a, Self>, allocator: &A)
+    where
+        A: AllocRef,
+    {
+        let layout = Layout::of::<Self>();
+        let ptr = instance.as_ptr();
+
+        unsafe {
+            ptr::drop_in_place(ptr);
+            allocator.dealloc(ptr as *mut u8, layout);
+        }
     }
 
     fn cas_next<'a, S>(&self, current: Shared<'_, Self>, next: Shared<'_, Self>, shield: &S) -> bool
@@ -483,6 +509,7 @@ impl<T> Entry<T> {
 #[cfg(test)]
 mod tests {
     use super::Queue;
+    use crate::alloc::GlobalAllocator;
     use crate::Collector;
 
     macro_rules! matches {
@@ -498,7 +525,7 @@ mod tests {
     fn push_pop_check() {
         let collector = Collector::new();
         let shield = collector.thin_shield();
-        let queue = Queue::new();
+        let queue = Queue::new(GlobalAllocator);
         queue.push(5, &shield);
         queue.push(10, &shield);
         assert!(matches!(queue.pop_if(|x| *x == 10, &shield), None));

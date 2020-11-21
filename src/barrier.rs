@@ -13,7 +13,7 @@
 //! sequentially consistent barrier in both the light and heavy barriers.
 //!
 //! THIS MODULE IS FULL OF HACKS THAT BLATANTLY ABUSE OS INTERFACES.
-//! IT'S A TOTAL MESS AND FOR YOUR OWN MENTAL HEALT YOU MAY WANT TO AVOID THIS CODE.
+//! IT'S A TOTAL MESS AND FOR YOUR OWN MENTAL HEALTH YOU MAY WANT TO AVOID THIS CODE.
 //! GIVE A PRAYER TO ANY FUTURE DEVELOPER THAT HAS TO MAINTAIN THIS CODE.
 //! IF IT WORKS THEN DON'T TOUCH IT EH?
 
@@ -142,14 +142,21 @@ mod linux {
 #[cfg(all(feature = "fast-barrier", target_os = "macos"))]
 mod macos {
     use core::ptr::null_mut;
-    use core::sync::atomic::{compiler_fence, AtomicPtr, Ordering};
+    use core::sync::atomic::{compiler_fence, Ordering};
+    use once_cell::sync::Lazy;
+    use std::sync::{Mutex, MutexGuard};
 
-    static DUMMY_PAGE: AtomicPtr<libc::c_void> = AtomicPtr::new(null_mut());
+    struct Ptr(*mut libc::c_void);
 
-    unsafe fn populate_dummy_page() -> *mut libc::c_void {
-        let dummy_ptr = DUMMY_PAGE.load(Ordering::SeqCst);
+    unsafe impl Send for Ptr {}
+    unsafe impl Sync for Ptr {}
 
-        if dummy_ptr.is_null() {
+    static DUMMY_PAGE: Lazy<Mutex<Ptr>> = Lazy::new(|| Mutex::new(Ptr(null_mut())));
+
+    unsafe fn populate_dummy_page() -> MutexGuard<'static, Ptr> {
+        let mut dummy_ptr = DUMMY_PAGE.lock().unwrap();
+
+        if dummy_ptr.0.is_null() {
             let new_ptr = libc::mmap(
                 null_mut(),
                 1,
@@ -162,25 +169,17 @@ mod macos {
             assert!(new_ptr != libc::MAP_FAILED);
             assert!(libc::mlock(new_ptr, 1) >= 0);
 
-            if !DUMMY_PAGE
-                .compare_and_swap(null_mut(), new_ptr, Ordering::SeqCst)
-                .is_null()
-            {
-                assert!(libc::munlock(new_ptr, 1) >= 0);
-                assert!(libc::munmap(new_ptr, 1) >= 0);
-            }
-
-            DUMMY_PAGE.load(Ordering::SeqCst)
-        } else {
-            dummy_ptr
+            *dummy_ptr = Ptr(new_ptr);
         }
+
+        dummy_ptr
     }
 
     pub fn strong_barrier() {
         unsafe {
             let dummy_page = populate_dummy_page();
-            assert!(libc::mprotect(dummy_page, 1, libc::PROT_READ | libc::PROT_WRITE) >= 0);
-            assert!(libc::mprotect(dummy_page, 1, libc::PROT_READ) >= 0);
+            assert!(libc::mprotect(dummy_page.0, 1, libc::PROT_READ | libc::PROT_WRITE) >= 0);
+            assert!(libc::mprotect(dummy_page.0, 1, libc::PROT_READ) >= 0);
         }
     }
 

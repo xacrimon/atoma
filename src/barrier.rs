@@ -11,6 +11,11 @@
 //!
 //! When no specialized implementation is available we fall back to executing a normal
 //! sequentially consistent barrier in both the light and heavy barriers.
+//!
+//! THIS MODULE IS FULL OF HACKS THAT BLATANTLY ABUSE OS INTERFACES.
+//! IT'S A TOTAL MESS AND FOR YOUR OWN MENTAL HEALT YOU MAY WANT TO AVOID THIS CODE.
+//! GIVE A PRAYER TO ANY FUTURE DEVELOPER THAT HAS TO MAINTAIN THIS CODE.
+//! IF IT WORKS THEN DON'T TOUCH IT EH?
 
 #[cfg(all(feature = "fast-barrier", target_os = "windows"))]
 pub use windows::{light_barrier, strong_barrier};
@@ -18,9 +23,16 @@ pub use windows::{light_barrier, strong_barrier};
 #[cfg(all(feature = "fast-barrier", target_os = "linux"))]
 pub use linux::{light_barrier, strong_barrier};
 
+#[cfg(all(feature = "fast-barrier", target_os = "macos"))]
+pub use macos::{light_barrier, strong_barrier};
+
 #[cfg(any(
     not(feature = "fast-barrier"),
-    all(not(target_os = "linux"), not(target_os = "windows"))
+    all(
+        not(target_os = "linux"),
+        not(target_os = "windows"),
+        not(target_os = "macos")
+    )
 ))]
 pub use fallback::{light_barrier, strong_barrier};
 
@@ -127,9 +139,63 @@ mod linux {
     }
 }
 
+#[cfg(all(feature = "fast-barrier", target_os = "macos"))]
+mod macos {
+    use core::ptr::null_mut;
+    use core::sync::atomic::{compiler_fence, AtomicPtr, Ordering};
+
+    static DUMMY_PAGE: AtomicPtr<libc::c_void> = AtomicPtr::new(null_mut());
+
+    unsafe fn populate_dummy_page() -> *mut libc::c_void {
+        let dummy_ptr = DUMMY_PAGE.load(Ordering::SeqCst);
+
+        if dummy_ptr.is_null() {
+            let new_ptr = libc::mmap(
+                null_mut(),
+                1,
+                libc::PROT_READ,
+                libc::MAP_PRIVATE | libc::MAP_ANONYMOUS,
+                -1,
+                0,
+            );
+
+            assert!(new_ptr != libc::MAP_FAILED);
+            assert!(libc::mlock(new_ptr, 1) >= 0);
+
+            if !DUMMY_PAGE
+                .compare_and_swap(null_mut(), new_ptr, Ordering::SeqCst)
+                .is_null()
+            {
+                assert!(libc::munlock(new_ptr, 1) >= 0);
+                assert!(libc::munmap(new_ptr, 1) >= 0);
+            }
+
+            DUMMY_PAGE.load(Ordering::SeqCst)
+        } else {
+            dummy_ptr
+        }
+    }
+
+    pub fn strong_barrier() {
+        unsafe {
+            let dummy_page = populate_dummy_page();
+            assert!(libc::mprotect(dummy_page, 1, libc::PROT_READ | libc::PROT_WRITE) >= 0);
+            assert!(libc::mprotect(dummy_page, 1, libc::PROT_READ) >= 0);
+        }
+    }
+
+    pub fn light_barrier() {
+        compiler_fence(Ordering::SeqCst);
+    }
+}
+
 #[cfg(any(
     not(feature = "fast-barrier"),
-    all(not(target_os = "linux"), not(target_os = "windows"))
+    all(
+        not(target_os = "linux"),
+        not(target_os = "windows"),
+        not(target_os = "macos")
+    )
 ))]
 mod fallback {
     use core::sync::atomic::{fence, Ordering};

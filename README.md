@@ -21,3 +21,28 @@ in a concurrent environment and you don't want to pay the price of locking.
 [![downloads](https://img.shields.io/crates/d/flize)](https://crates.io/crates/flize)
 
 [![minimum rustc version](https://img.shields.io/badge/rustc-1.36+-orange.svg)](https://crates.io/crates/flize)
+
+## Testing
+
+Testing is done automatically by our CI on every push and pull request.
+Releases and the master branch should always pass tests.
+
+Due to the nature of this crate it is heavily architecture and OS dependent.
+Because of this we run tests on a number of different architectures using emulation
+and check that the crate builds successfully on Linux, Windows and macOS.
+
+## Test targets
+
+These are targets we build and test on.
+
+- `x86_64-unknown-linux-gnu`
+- `i686-unknown-linux-gnu`
+- `aarch64-unknown-linux-gnu`
+- `powerpc64le-unknown-linux-gnu`
+
+## Build targets
+
+These are targets we only build on.
+
+- `x86_64-pc-windows-gnu`
+- `x86_64-apple-darwin`

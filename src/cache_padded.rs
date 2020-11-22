@@ -34,3 +34,20 @@ impl<T> DerefMut for CachePadded<T> {
         &mut self.value
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::CachePadded;
+    use std::mem;
+
+    #[test]
+    fn align_verify() {
+        let alignment = if cfg!(target_arch = "x86_64") || cfg!(target_arch = "aarch64") {
+            128
+        } else {
+            64
+        };
+
+        assert_eq!(mem::align_of::<CachePadded<usize>>(), alignment);
+    }
+}

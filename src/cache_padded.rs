@@ -34,3 +34,15 @@ impl<T> DerefMut for CachePadded<T> {
         &mut self.value
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::mem;
+    use super::CachePadded;
+
+    #[test]
+    fn align_verify() {
+        const ALIGNMENT: usize = 128;
+        assert_eq!(mem::align_of::<CachePadded<usize>>(), ALIGNMENT);
+    }
+}

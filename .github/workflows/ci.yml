@@ -18,6 +18,7 @@ jobs:
       run: cargo clippy --all-targets --all-features -- -D warnings
 
   build:
+    runs-on: ubuntu-18.04
     strategy:
       matrix:
         target: [

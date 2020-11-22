@@ -16,7 +16,28 @@ jobs:
       run: cargo fmt -- --check
     - name: clippy
       run: cargo clippy --all-targets --all-features -- -D warnings
-  
+
+  build:
+    runs-on: ubuntu-18.04
+    strategy:
+      matrix:
+        target: [
+          x86_64-pc-windows-gnu,
+          x86_64-apple-darwin,
+          wasm32-unknown-emscripten,
+          aarch64-apple-ios,
+          aarch64-linux-android,
+          arm-unknown-linux-gnueabi,
+          armv7-linux-androideabi,
+          i686-pc-windows-gnu,
+        ]
+    steps:
+      - uses: actions/checkout@v2
+      - name: build
+        run: |
+          rustup install stable-2019-07-04-${{ matrix.target }}
+          cargo build --target ${{ matrix.target }}
+
   test:
     runs-on: ubuntu-18.04
     strategy:

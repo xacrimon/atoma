@@ -33,21 +33,21 @@ and check that the crate builds successfully on Linux, Windows and macOS.
 
 All testing is done on our MSRV toolchain which is Rust 1.36 `stable-2019-07-04`.
 
-## Test targets
+### Test targets
 
 These are targets we build and test on and the OS used for it.
 
-### Ubuntu 18.04
+#### Ubuntu 18.04
 
 - `x86_64-unknown-linux-gnu`
 - `i686-unknown-linux-gnu`
 - `aarch64-unknown-linux-gnu`
 - `powerpc64le-unknown-linux-gnu`
 
-### Windows Server 2019
+#### Windows Server 2019
 
 - `x86_64-pc-windows-msvc`
 
-### macOS Catalina 10.15
+#### macOS Catalina 10.15
 
 - `x86_64-apple-darwin`

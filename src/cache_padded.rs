@@ -37,8 +37,8 @@ impl<T> DerefMut for CachePadded<T> {
 
 #[cfg(test)]
 mod tests {
-    use std::mem;
     use super::CachePadded;
+    use std::mem;
 
     #[test]
     fn align_verify() {

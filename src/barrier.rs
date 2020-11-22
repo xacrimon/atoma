@@ -207,3 +207,42 @@ mod fallback {
         fence(Ordering::SeqCst);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{light_barrier, strong_barrier};
+    use std::sync::{Arc, Barrier};
+    use std::thread;
+
+    #[test]
+    fn mixed_test() {
+        const ITER: usize = 10000;
+        const DIV_BY_STRONG: usize = 2;
+        const THREADS: [usize; 6] = [2, 4, 8, 16, 32, 64];
+
+        for threads in &THREADS {
+            let barrier = Arc::new(Barrier::new(threads + 1));
+
+            for _ in 0..*threads {
+                let barrier = Arc::clone(&barrier);
+
+                thread::spawn(move || {
+                    barrier.wait();
+
+                    for i in 0..ITER {
+                        if i % DIV_BY_STRONG == 0 {
+                            strong_barrier();
+                        } else {
+                            light_barrier();
+                        }
+                    }
+
+                    barrier.wait();
+                });
+            }
+
+            barrier.wait();
+            barrier.wait();
+        }
+    }
+}

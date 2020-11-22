@@ -31,7 +31,7 @@ Due to the nature of this crate it is heavily architecture and OS dependent.
 Because of this we run tests on a number of different architectures using emulation
 and check that the crate builds successfully on Linux, Windows and macOS.
 
-All testing is done on our MSRV toolchain which is `stable-2019-07-04`.
+All testing is done on our MSRV toolchain which is Rust 1.36 `stable-2019-07-04`.
 
 ## Test targets
 

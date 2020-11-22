@@ -42,7 +42,12 @@ mod tests {
 
     #[test]
     fn align_verify() {
-        const ALIGNMENT: usize = 128;
-        assert_eq!(mem::align_of::<CachePadded<usize>>(), ALIGNMENT);
+        let alignment = if cfg!(target_arch = "x86_64") || cfg!(target_arch = "aarch64") {
+            128
+        } else {
+            64
+        };
+
+        assert_eq!(mem::align_of::<CachePadded<usize>>(), alignment);
     }
 }

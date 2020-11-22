@@ -16,8 +16,27 @@ jobs:
       run: cargo fmt -- --check
     - name: clippy
       run: cargo clippy --all-targets --all-features -- -D warnings
-  
-  test:
+
+  test-os:
+    runs-on: ${{ matrix.environment }}
+    strategy:
+      matrix:
+        include:
+          - environment: windows-2019
+            toolchain: stable-2019-07-04-x86_64-pc-windows-msvc
+            target: x86_64-pc-windows-msvc
+
+          - environment: macos-10.15
+            toolchain: stable-2019-07-04-x86_64-apple-darwin
+            target: x86_64-apple-darwin
+    steps:
+      - uses: actions/checkout@v2
+      - name: setup
+        run: rustup install ${{ matrix.toolchain }}
+      - name: test
+        run: cargo test --target ${{ matrix.target }}
+
+  test-arch:
     runs-on: ubuntu-18.04
     strategy:
       matrix:

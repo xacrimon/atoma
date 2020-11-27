@@ -21,7 +21,11 @@ impl<T> Mutex<T> {
     }
 
     fn acquire(&self) {
-        while self.state.swap(LOCKED, Ordering::Acquire) == LOCKED {
+        while self
+            .state
+            .compare_exchange_weak(UNLOCKED, LOCKED, Ordering::Acquire, Ordering::Relaxed)
+            .is_err()
+        {
             spin_loop_hint();
         }
     }

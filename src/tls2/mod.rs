@@ -57,7 +57,7 @@ impl<T> ThreadLocal<T> {
     }
 
     pub fn changed_since(&self, snapshot: Snapshot) -> bool {
-        !(self.snapshot.load(Ordering::SeqCst) == snapshot.0)
+        self.snapshot.load(Ordering::SeqCst) != snapshot.0
     }
 }
 

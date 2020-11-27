@@ -53,7 +53,7 @@ mod mutex;
 mod queue;
 mod shared;
 mod tag;
-mod thread_local;
+mod tls2;
 
 pub use atomic::Atomic;
 pub use cache_padded::CachePadded;

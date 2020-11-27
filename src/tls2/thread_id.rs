@@ -12,8 +12,8 @@ use crate::mutex::Mutex;
 /// If an allocation is attempted and the list is empty,
 /// we increment limit and return the previous value.
 struct IdAllocator {
-    limit: u32,
-    free: PriorityQueue<u32>,
+    limit: usize,
+    free: PriorityQueue<usize>,
 }
 
 impl IdAllocator {
@@ -24,7 +24,7 @@ impl IdAllocator {
         }
     }
 
-    fn allocate(&mut self) -> u32 {
+    fn allocate(&mut self) -> usize {
         self.free.pop().unwrap_or_else(|| {
             let id = self.limit;
             self.limit += 1;
@@ -32,14 +32,14 @@ impl IdAllocator {
         })
     }
 
-    fn deallocate(&mut self, id: u32) {
+    fn deallocate(&mut self, id: usize) {
         self.free.push(id);
     }
 }
 
 static ID_ALLOCATOR: Lazy<Mutex<IdAllocator>> = Lazy::new(|| Mutex::new(IdAllocator::new()));
 
-struct ThreadId(u32);
+struct ThreadId(usize);
 
 impl ThreadId {
     fn new() -> Self {
@@ -58,6 +58,6 @@ thread_local! {
     static THREAD_ID: ThreadId = ThreadId::new();
 }
 
-pub fn get() -> u32 {
+pub fn get() -> usize {
     THREAD_ID.with(|data| data.0)
 }

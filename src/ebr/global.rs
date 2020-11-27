@@ -6,8 +6,7 @@ use super::{
     DefinitiveEpoch,
 };
 use crate::{
-    barrier::strong_barrier, deferred::Deferred, queue::Queue, thread_local::ThreadLocal,
-    CachePadded,
+    barrier::strong_barrier, deferred::Deferred, queue::Queue, tls2::ThreadLocal, CachePadded,
 };
 use core::{
     mem::MaybeUninit,
@@ -134,39 +133,21 @@ impl Global {
     }
 
     fn try_advance(&self) -> Result<Epoch, ()> {
-        let mod_acc_pre = self.threads.mod_acc();
-
-        if mod_acc_pre % 2 != 0 {
-            return Err(());
-        }
-
         let global_epoch = self.global_epoch.load(Ordering::Relaxed);
+        let snapshot = self.threads.snapshot();
         strong_barrier();
         let ct_epoch = self.ct.load_epoch_relaxed();
         let ct_is_sync = !ct_epoch.is_pinned() || ct_epoch == global_epoch;
-        let mut chck_count = 0;
 
-        let can_collect = ct_is_sync
-            && self
-                .threads
-                .iter()
-                .map(|state| state.load_epoch_relaxed())
-                .filter(|epoch| epoch.is_pinned())
-                .map(|x| {
-                    chck_count += 1;
-                    x
-                })
-                .all(|epoch| epoch.unpinned() == global_epoch)
-            && chck_count == self.threads.len();
+        let synced_epochs = self
+            .threads
+            .iter()
+            .map(|state| state.load_epoch_relaxed())
+            .filter(|epoch| epoch.is_pinned())
+            .all(|epoch| epoch.unpinned() == global_epoch);
 
-        if can_collect {
-            let res = self.global_epoch.try_advance(global_epoch);
-
-            if self.threads.mod_acc() == mod_acc_pre {
-                res
-            } else {
-                Err(())
-            }
+        if synced_epochs && ct_is_sync && !self.threads.changed_since(snapshot) {
+            self.global_epoch.try_advance(global_epoch)
         } else {
             Err(())
         }

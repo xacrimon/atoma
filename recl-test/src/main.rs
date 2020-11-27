@@ -21,7 +21,7 @@ fn main() {
         thread::spawn(move || loop {
             for _ in 0..ALLOC_GROUP_SIZE {
                 let a = Box::new(5_i32);
-                let shield = collector.full_shield();
+                let shield = collector.thin_shield();
                 shield.retire(move || drop(a));
             }
 

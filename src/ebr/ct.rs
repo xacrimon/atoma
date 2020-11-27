@@ -42,9 +42,10 @@ impl CrossThread {
         fence(Ordering::Acquire);
         let previous_shields = self.shields.fetch_sub(1, Ordering::Relaxed);
 
-        if previous_shields == 0 {
+        if previous_shields == 1 {
             self.epoch
                 .compare_and_set_non_unique(epoch_prev, Epoch::ZERO, Ordering::Relaxed);
+
             self.finalize(global);
         }
     }

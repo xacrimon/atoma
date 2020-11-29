@@ -76,3 +76,9 @@ impl Deferred {
         unsafe { (self.call)(&mut self.data as *mut Data as *mut u8) }
     }
 }
+
+impl Default for Deferred {
+    fn default() -> Self {
+        Self::new(|| ())
+    }
+}

@@ -1,13 +1,18 @@
+use super::bag::{Bag, SealedBag};
 use super::epoch::{AtomicEpoch, Epoch};
 use super::global::Global;
 use crate::barrier::light_barrier;
+use crate::deferred::Deferred;
+use crate::mutex::Mutex;
 use crate::CachePadded;
+use core::mem;
 use core::sync::atomic::{fence, AtomicIsize, Ordering};
 use std::sync::Arc;
 
 pub struct CrossThread {
     epoch: CachePadded<AtomicEpoch>,
     shields: CachePadded<AtomicIsize>,
+    bag: Mutex<Bag>,
 }
 
 impl CrossThread {
@@ -15,6 +20,7 @@ impl CrossThread {
         Self {
             epoch: CachePadded::new(AtomicEpoch::new(Epoch::ZERO)),
             shields: CachePadded::new(AtomicIsize::new(0)),
+            bag: Mutex::new(Bag::new()),
         }
     }
 
@@ -55,5 +61,30 @@ impl CrossThread {
             let local_state = Global::local_state(global);
             let _ = global.try_cycle(local_state);
         }
+    }
+
+    pub(crate) fn retire(&self, deferred: Deferred, epoch: Epoch) -> Option<SealedBag> {
+        let mut bag = self.bag.lock();
+        bag.push(deferred);
+
+        if bag.is_full() {
+            Some(Self::i_flush(&mut bag, epoch))
+        } else {
+            None
+        }
+    }
+
+    pub(crate) fn flush(&self, epoch: Epoch) -> Option<SealedBag> {
+        let mut bag = self.bag.lock();
+
+        if !bag.is_empty() {
+            Some(Self::i_flush(&mut bag, epoch))
+        } else {
+            None
+        }
+    }
+
+    fn i_flush(bag: &mut Bag, epoch: Epoch) -> SealedBag {
+        mem::replace(bag, Bag::new()).seal(epoch)
     }
 }

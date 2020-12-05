@@ -38,6 +38,9 @@ pub trait Shield<'a>: Clone + fmt::Debug {
     fn retire<F>(&self, f: F)
     where
         F: FnOnce() + 'a;
+
+    /// Moves all deferred functions in the queue associated with the shield to the one associated with the collector.
+    fn flush(&self);
 }
 
 /// A `FullShield` is largely equivalent to `ThinShield` in terms of functionality.
@@ -92,8 +95,20 @@ impl<'a> Shield<'a> for FullShield<'a> {
     where
         F: FnOnce() + 'a,
     {
+        let epoch = self.global.load_epoch_relaxed();
         let deferred = Deferred::new(f);
-        self.global.retire(deferred, self);
+
+        if let Some(sealed) = self.global.ct.retire(deferred, epoch) {
+            self.global.retire_bag(sealed, self);
+        }
+    }
+
+    fn flush(&self) {
+        let epoch = self.global.load_epoch_relaxed();
+
+        if let Some(sealed) = self.global.ct.flush(epoch) {
+            self.global.retire_bag(sealed, self);
+        }
     }
 }
 
@@ -169,6 +184,10 @@ impl<'a> Shield<'a> for ThinShield<'a> {
         let deferred = Deferred::new(f);
         self.local_state.retire(deferred, self);
     }
+
+    fn flush(&self) {
+        self.local_state.flush(self);
+    }
 }
 
 impl<'a> Clone for ThinShield<'a> {
@@ -233,6 +252,8 @@ impl<'a> Shield<'a> for UnprotectedShield {
     {
         f();
     }
+
+    fn flush(&self) {}
 }
 
 impl fmt::Debug for UnprotectedShield {

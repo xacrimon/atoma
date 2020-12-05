@@ -50,7 +50,6 @@ mod deferred;
 mod ebr;
 mod lazy;
 mod mutex;
-mod queue;
 mod shared;
 mod tag;
 mod tls2;

@@ -2,14 +2,14 @@ use super::epoch::Epoch;
 use crate::deferred::Deferred;
 use tinyvec::ArrayVec;
 
-const BAG_SIZE: usize = 32;
-
 pub struct Bag {
     next: usize,
-    deferred: ArrayVec<[Deferred; BAG_SIZE]>,
+    deferred: ArrayVec<[Deferred; Self::SIZE]>,
 }
 
 impl Bag {
+    pub const SIZE: usize = 32;
+
     pub fn new() -> Self {
         Self {
             next: 0,
@@ -24,7 +24,11 @@ impl Bag {
     }
 
     pub fn is_full(&self) -> bool {
-        self.next == BAG_SIZE
+        self.next == Self::SIZE
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.next == 0
     }
 
     pub fn seal(self, current_epoch: Epoch) -> SealedBag {

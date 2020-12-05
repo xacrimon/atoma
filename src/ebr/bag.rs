@@ -3,7 +3,6 @@ use crate::deferred::Deferred;
 use tinyvec::ArrayVec;
 
 pub struct Bag {
-    next: usize,
     deferred: ArrayVec<[Deferred; Self::SIZE]>,
 }
 
@@ -12,23 +11,20 @@ impl Bag {
 
     pub fn new() -> Self {
         Self {
-            next: 0,
             deferred: ArrayVec::new(),
         }
     }
 
     pub fn push(&mut self, deferred: Deferred) {
-        let next = self.next;
-        self.next += 1;
-        self.deferred[next] = deferred;
+        self.deferred.push(deferred);
     }
 
     pub fn is_full(&self) -> bool {
-        self.next == Self::SIZE
+        self.deferred.len() == Self::SIZE
     }
 
     pub fn is_empty(&self) -> bool {
-        self.next == 0
+        self.deferred.is_empty()
     }
 
     pub fn seal(self, current_epoch: Epoch) -> SealedBag {

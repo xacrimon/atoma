@@ -8,7 +8,7 @@ use std::{
     time::Duration,
 };
 
-const THREADS: usize = 2;
+const THREADS: usize = 4;
 const ALLOC_GROUP_SIZE: usize = 4096;
 static ALLOCS: AtomicUsize = AtomicUsize::new(0);
 

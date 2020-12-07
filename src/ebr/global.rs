@@ -1,5 +1,5 @@
 use super::{
-    bag::{Bag, SealedBag},
+    bag::SealedBag,
     ct::CrossThread,
     epoch::{AtomicEpoch, Epoch},
     local::{Local, LocalState},
@@ -66,8 +66,9 @@ impl Global {
         S: Shield<'a>,
     {
         let _epoch = self.global_epoch.load(Ordering::Relaxed);
+        let diff = bag.len() as isize;
         self.deferred.lock().push_back(bag);
-        self.deferred_amount.fetch_add(1, Ordering::Relaxed);
+        self.deferred_amount.fetch_add(diff, Ordering::Relaxed);
     }
 
     pub(crate) fn should_advance(&self) -> bool {
@@ -83,9 +84,7 @@ impl Global {
         if let Ok(epoch) = self.try_advance() {
             let shield = local_state.thin_shield();
             fence(Ordering::SeqCst);
-            let safe_epoch = epoch.next();
-
-            unsafe { Ok(self.internal_collect(safe_epoch, &shield)) }
+            unsafe { Ok(self.internal_collect(epoch, &shield)) }
         } else {
             Err(())
         }
@@ -93,20 +92,23 @@ impl Global {
 
     unsafe fn internal_collect(&self, epoch: Epoch, _shield: &ThinShield) -> usize {
         let mut executed_amount = 0;
-        let mut deferred = self.deferred.lock();
 
-        while let Some(bag) = deferred.pop_front() {
-            if bag.epoch() == epoch {
-                bag.run();
-                self.deferred_amount.fetch_sub(1, Ordering::Relaxed);
-                executed_amount += 1;
-            } else {
-                deferred.push_front(bag);
-                break;
+        loop {
+            let mut queue = self.deferred.lock();
+
+            if !queue.is_empty() {
+                if queue[0].epoch().two_passed(epoch) {
+                    let sealed = queue.pop_front().unwrap();
+                    drop(queue);
+                    executed_amount += sealed.run();
+                    continue;
+                }
             }
+
+            break;
         }
 
-        executed_amount * Bag::SIZE
+        executed_amount
     }
 
     fn try_advance(&self) -> Result<Epoch, ()> {

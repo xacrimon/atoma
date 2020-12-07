@@ -59,9 +59,18 @@ impl SealedBag {
         self.epoch
     }
 
-    pub unsafe fn run(self) {
+    pub fn len(&self) -> usize {
+        self.deferred.len()
+    }
+
+    pub unsafe fn run(self) -> usize {
+        let mut x = 0;
+
         for deferred in self.deferred {
             deferred.call();
+            x += 1;
         }
+
+        x
     }
 }

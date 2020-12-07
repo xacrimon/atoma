@@ -111,15 +111,17 @@ impl LocalState {
     where
         S: Shield<'a>,
     {
+        let epoch = self.global.load_epoch_relaxed();
         let bag = unsafe { &mut *self.bag.get() };
-        bag.push(deferred);
+        bag.try_process(epoch);
+        bag.push(deferred, epoch);
 
         if bag.is_full() {
             self.force_flush(shield);
         }
     }
 
-    pub fn flush<'a, S>(&self, shield: &S)
+    pub(crate) fn flush<'a, S>(&self, shield: &S)
     where
         S: Shield<'a>,
     {

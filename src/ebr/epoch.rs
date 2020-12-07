@@ -2,7 +2,7 @@ use core::sync::atomic::{AtomicU64, Ordering};
 
 const PIN_MASK: u64 = core::u64::MAX >> 1;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct Epoch {
     data: u64,
 }

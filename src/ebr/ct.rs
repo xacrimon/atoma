@@ -65,7 +65,8 @@ impl CrossThread {
 
     pub(crate) fn retire(&self, deferred: Deferred, epoch: Epoch) -> Option<SealedBag> {
         let mut bag = self.bag.lock();
-        bag.push(deferred);
+        bag.try_process(epoch);
+        bag.push(deferred, epoch);
 
         if bag.is_full() {
             Some(Self::i_flush(&mut bag, epoch))

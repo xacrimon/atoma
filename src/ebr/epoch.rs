@@ -36,6 +36,10 @@ impl Epoch {
         Self::from_raw(self.data + 1)
     }
 
+    pub fn two_passed(&self, now: Epoch) -> bool {
+        now.data.saturating_sub(self.data) >= 2
+    }
+
     fn unique(self) -> u64 {
         self.data % Self::AMOUNT
     }

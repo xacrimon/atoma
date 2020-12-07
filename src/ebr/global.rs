@@ -96,13 +96,11 @@ impl Global {
         loop {
             let mut queue = self.deferred.lock();
 
-            if !queue.is_empty() {
-                if queue[0].epoch().two_passed(epoch) {
-                    let sealed = queue.pop_front().unwrap();
-                    drop(queue);
-                    executed_amount += sealed.run();
-                    continue;
-                }
+            if !queue.is_empty() && queue[0].epoch().two_passed(epoch) {
+                let sealed = queue.pop_front().unwrap();
+                drop(queue);
+                executed_amount += sealed.run();
+                continue;
             }
 
             break;

@@ -30,7 +30,7 @@ impl Bag {
     pub fn try_process(&mut self, current_epoch: Epoch) {
         while !self.deferred.is_empty() {
             let bottom_epoch = self.deferred[0].1;
-                
+
             if bottom_epoch.two_passed(current_epoch) {
                 self.deferred.remove(0).0.call();
             } else {

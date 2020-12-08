@@ -104,9 +104,7 @@ impl<'a> Shield<'a> for FullShield<'a> {
     }
 
     fn flush(&self) {
-        let epoch = self.global.load_epoch_relaxed();
-
-        if let Some(sealed) = self.global.ct.flush(epoch) {
+        if let Some(sealed) = self.global.ct.flush() {
             self.global.retire_bag(sealed, self);
         }
     }

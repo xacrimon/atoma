@@ -39,9 +39,20 @@ impl Bag {
         }
     }
 
-    pub fn seal(self, current_epoch: Epoch) -> SealedBag {
+    fn last_epoch(&self) -> Epoch {
+        let len = self.deferred.len();
+
+        if len != 0 {
+            self.deferred[len - 1].1
+        } else {
+            Epoch::ZERO
+        }
+    }
+
+    pub fn seal(self) -> SealedBag {
+        let epoch = self.last_epoch();
         let data = self.deferred.into_iter().map(|(x, _)| x).collect();
-        SealedBag::new(current_epoch, data)
+        SealedBag::new(epoch, data)
     }
 }
 

@@ -69,23 +69,23 @@ impl CrossThread {
         bag.push(deferred, epoch);
 
         if bag.is_full() {
-            Some(Self::i_flush(&mut bag, epoch))
+            Some(Self::i_flush(&mut bag))
         } else {
             None
         }
     }
 
-    pub(crate) fn flush(&self, epoch: Epoch) -> Option<SealedBag> {
+    pub(crate) fn flush(&self) -> Option<SealedBag> {
         let mut bag = self.bag.lock();
 
         if !bag.is_empty() {
-            Some(Self::i_flush(&mut bag, epoch))
+            Some(Self::i_flush(&mut bag))
         } else {
             None
         }
     }
 
-    fn i_flush(bag: &mut Bag, epoch: Epoch) -> SealedBag {
-        mem::replace(bag, Bag::new()).seal(epoch)
+    fn i_flush(bag: &mut Bag) -> SealedBag {
+        mem::replace(bag, Bag::new()).seal()
     }
 }

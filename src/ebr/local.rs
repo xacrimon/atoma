@@ -137,8 +137,7 @@ impl LocalState {
         S: Shield<'a>,
     {
         let bag = unsafe { &mut *self.bag.get() };
-        let epoch = self.global.load_epoch_relaxed();
-        let sealed = mem::replace(bag, Bag::new()).seal(epoch);
+        let sealed = mem::replace(bag, Bag::new()).seal();
         self.global.retire_bag(sealed, shield);
     }
 

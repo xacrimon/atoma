@@ -116,23 +116,6 @@ struct Position<T> {
 /// that can hold a handful of elements. There is no limit to how many elements can be in the queue
 /// at a time. However, since segments need to be dynamically allocated as elements get pushed,
 /// this queue is somewhat slower than [`ArrayQueue`].
-///
-/// [`ArrayQueue`]: super::ArrayQueue
-///
-/// # Examples
-///
-/// ```
-/// use crossbeam_queue::Queue;
-///
-/// let q = Queue::new();
-///
-/// q.push('a');
-/// q.push('b');
-///
-/// assert_eq!(q.pop(), Some('a'));
-/// assert_eq!(q.pop(), Some('b'));
-/// assert!(q.pop().is_none());
-/// ```
 pub struct Queue<T> {
     /// The head of the queue.
     head: CachePadded<Position<T>>,
@@ -149,14 +132,6 @@ unsafe impl<T: Send> Sync for Queue<T> {}
 
 impl<T> Queue<T> {
     /// Creates a new unbounded queue.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use crossbeam_queue::Queue;
-    ///
-    /// let q = Queue::<i32>::new();
-    /// ```
     pub const fn new() -> Queue<T> {
         Queue {
             head: CachePadded::new(Position {
@@ -172,17 +147,6 @@ impl<T> Queue<T> {
     }
 
     /// Pushes an element into the queue.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use crossbeam_queue::Queue;
-    ///
-    /// let q = Queue::new();
-    ///
-    /// q.push(10);
-    /// q.push(20);
-    /// ```
     pub fn push(&self, value: T) {
         let backoff = Backoff::new();
         let mut tail = self.tail.index.load(Ordering::Acquire);
@@ -264,20 +228,6 @@ impl<T> Queue<T> {
     }
 
     /// Pops an element from the queue.
-    ///
-    /// If the queue is empty, `None` is returned.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use crossbeam_queue::Queue;
-    ///
-    /// let q = Queue::new();
-    ///
-    /// q.push(10);
-    /// assert_eq!(q.pop(), Some(10));
-    /// assert!(q.pop().is_none());
-    /// ```
     pub fn pop(&self) -> Option<T> {
         let backoff = Backoff::new();
         let mut head = self.head.index.load(Ordering::Acquire);
@@ -366,18 +316,6 @@ impl<T> Queue<T> {
     }
 
     /// Returns `true` if the queue is empty.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use crossbeam_queue::Queue;
-    ///
-    /// let q = Queue::new();
-    ///
-    /// assert!(q.is_empty());
-    /// q.push(1);
-    /// assert!(!q.is_empty());
-    /// ```
     pub fn is_empty(&self) -> bool {
         let head = self.head.index.load(Ordering::SeqCst);
         let tail = self.tail.index.load(Ordering::SeqCst);
@@ -385,21 +323,6 @@ impl<T> Queue<T> {
     }
 
     /// Returns the number of elements in the queue.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use crossbeam_queue::Queue;
-    ///
-    /// let q = Queue::new();
-    /// assert_eq!(q.len(), 0);
-    ///
-    /// q.push(10);
-    /// assert_eq!(q.len(), 1);
-    ///
-    /// q.push(20);
-    /// assert_eq!(q.len(), 2);
-    /// ```
     pub fn len(&self) -> usize {
         loop {
             // Load the tail index, then load the head index.

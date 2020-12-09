@@ -31,13 +31,15 @@ impl<T> ThreadLocal<T> {
         F: FnOnce() -> T,
     {
         let id = thread_id::get();
-        let entry = self.entries[id].load(Ordering::SeqCst);
+        let entry = unsafe { self.entries.get_unchecked(id).load(Ordering::SeqCst) };
 
         if entry == 0 {
             self.snapshot.fetch_add(1, Ordering::SeqCst);
             let item = Box::new(create());
             let raw = Box::into_raw(item) as usize;
-            self.entries[id].store(raw, Ordering::SeqCst);
+            unsafe {
+                self.entries.get_unchecked(id).store(raw, Ordering::SeqCst);
+            }
             self.snapshot.fetch_add(1, Ordering::SeqCst);
             unsafe { &*(raw as *const T) }
         } else {

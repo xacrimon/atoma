@@ -29,7 +29,7 @@ impl Bag {
 
     pub fn try_process(&mut self, current_epoch: Epoch) {
         while !self.deferred.is_empty() {
-            let bottom_epoch = self.deferred[0].1;
+            let bottom_epoch = unsafe { self.deferred.get_unchecked(0).1 };
 
             if bottom_epoch.two_passed(current_epoch) {
                 self.deferred.remove(0).0.call();
@@ -43,7 +43,7 @@ impl Bag {
         let len = self.deferred.len();
 
         if len != 0 {
-            self.deferred[len - 1].1
+            unsafe { self.deferred.get_unchecked(len - 1).1 }
         } else {
             Epoch::ZERO
         }

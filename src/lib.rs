@@ -54,6 +54,7 @@ mod shared;
 mod tag;
 mod tls2;
 mod backoff;
+mod queue;
 
 pub use atomic::Atomic;
 pub use cache_padded::CachePadded;
@@ -63,3 +64,4 @@ pub use ebr::{
 };
 pub use shared::Shared;
 pub use tag::{NullTag, Tag};
+pub use backoff::Backoff;

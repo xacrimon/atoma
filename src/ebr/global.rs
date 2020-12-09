@@ -6,14 +6,14 @@ use super::{
     shield::{FullShield, Shield, ThinShield},
     DefinitiveEpoch,
 };
-use crate::{barrier::strong_barrier, mutex::Mutex, tls2::ThreadLocal, CachePadded};
+use crate::{queue::Queue, barrier::strong_barrier, mutex::Mutex, tls2::ThreadLocal, CachePadded};
 use core::sync::atomic::{fence, AtomicIsize, Ordering};
 use std::collections::VecDeque;
 use std::sync::Arc;
 
 pub(crate) struct Global {
     threads: ThreadLocal<Arc<LocalState>>,
-    deferred: Mutex<VecDeque<SealedBag>>,
+    deferred: Queue<SealedBag>,
     global_epoch: CachePadded<AtomicEpoch>,
     deferred_amount: CachePadded<AtomicIsize>,
     pub(crate) ct: CrossThread,
@@ -23,7 +23,7 @@ impl Global {
     pub(crate) fn new() -> Self {
         Self {
             threads: ThreadLocal::new(),
-            deferred: Mutex::new(VecDeque::new()),
+            deferred: Queue::new(),
             global_epoch: CachePadded::new(AtomicEpoch::new(Epoch::ZERO)),
             deferred_amount: CachePadded::new(AtomicIsize::new(0)),
             ct: CrossThread::new(),
@@ -67,7 +67,7 @@ impl Global {
     {
         let _epoch = self.global_epoch.load(Ordering::Relaxed);
         let diff = bag.len() as isize;
-        self.deferred.lock().push_back(bag);
+        self.deferred.push(bag);
         self.deferred_amount.fetch_add(diff, Ordering::Relaxed);
     }
 
@@ -93,17 +93,13 @@ impl Global {
     unsafe fn internal_collect(&self, epoch: Epoch, _shield: &ThinShield) -> usize {
         let mut executed_amount = 0;
 
-        loop {
-            let mut queue = self.deferred.lock();
-
-            if !queue.is_empty() && queue[0].epoch().two_passed(epoch) {
-                let sealed = queue.pop_front().unwrap();
-                drop(queue);
+        while let Some(sealed) = self.deferred.pop() {
+            if sealed.epoch().two_passed(epoch) {
                 executed_amount += sealed.run();
-                continue;
+            } else {
+                self.deferred.push(sealed);
+                break;
             }
-
-            break;
         }
 
         executed_amount

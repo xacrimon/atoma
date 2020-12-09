@@ -13,8 +13,9 @@ keywords = ["atomic", "concurrent", "memory", "epoch", "reclamation"]
 categories = ["concurrency", "algorithms", "data-structures"]
 
 [features]
-default = ["fast-barrier"]
-fast-barrier = ["libc", "winapi", "once_cell"]
+default = ["std", "fast-barrier"]
+std = []
+fast-barrier = ["std", "libc", "winapi", "once_cell"]
 
 [dependencies]
 generic-array = "=0.14.4"

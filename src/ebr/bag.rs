@@ -75,11 +75,10 @@ impl SealedBag {
     }
 
     pub unsafe fn run(self) -> usize {
-        let mut x = 0;
+        let x = self.deferred.len();
 
         for deferred in self.deferred {
             deferred.call();
-            x += 1;
         }
 
         x

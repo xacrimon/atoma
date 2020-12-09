@@ -1,3 +1,4 @@
+use crate::{Backoff, CachePadded};
 use core::{
     cell::UnsafeCell,
     ops::{Deref, DerefMut},
@@ -8,25 +9,27 @@ const UNLOCKED: bool = false;
 const LOCKED: bool = true;
 
 pub struct Mutex<T> {
-    state: AtomicBool,
+    state: CachePadded<AtomicBool>,
     data: UnsafeCell<T>,
 }
 
 impl<T> Mutex<T> {
     pub fn new(data: T) -> Self {
         Self {
-            state: AtomicBool::new(UNLOCKED),
+            state: CachePadded::new(AtomicBool::new(UNLOCKED)),
             data: UnsafeCell::new(data),
         }
     }
 
     fn acquire(&self) {
+        let backoff = Backoff::new();
+
         while self
             .state
             .compare_exchange_weak(UNLOCKED, LOCKED, Ordering::Acquire, Ordering::Relaxed)
             .is_err()
         {
-            spin_loop_hint();
+            backoff.snooze();
         }
     }
 

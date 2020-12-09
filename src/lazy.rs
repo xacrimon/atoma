@@ -1,8 +1,9 @@
+use crate::Backoff;
 use crate::CachePadded;
 use core::cell::UnsafeCell;
 use core::mem::MaybeUninit;
 use core::ptr;
-use core::sync::atomic::{fence, spin_loop_hint, AtomicU8, Ordering};
+use core::sync::atomic::{fence, AtomicU8, Ordering};
 
 const DEFAULT_STATE: u8 = 0;
 const INIT_MASK: u8 = 1 << 1;
@@ -67,6 +68,8 @@ where
     }
 
     fn get_slow(&self) -> &T {
+        let backoff = Backoff::new();
+
         loop {
             fence(Ordering::Acquire);
 
@@ -87,7 +90,7 @@ where
                 break unsafe { self.value_ref() };
             }
 
-            spin_loop_hint();
+            backoff.snooze();
         }
     }
 }

@@ -1,3 +1,5 @@
+// LICENSE NOTICE: Most of this code has been copied from the crossbeam repository with the MIT license.
+
 use crate::{CachePadded, Backoff};
 use std::boxed::Box;
 use core::cell::UnsafeCell;

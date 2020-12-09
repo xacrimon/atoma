@@ -9,7 +9,7 @@ use std::{
 };
 
 const THREADS: usize = 4;
-const ALLOC_GROUP_SIZE: usize = 1024;
+const ALLOC_GROUP_SIZE: usize = 4096;
 static ALLOCS: AtomicUsize = AtomicUsize::new(0);
 
 fn main() {

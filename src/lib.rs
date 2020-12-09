@@ -44,6 +44,7 @@
 //! This flag is enabled by default and disabling it will cause the more general implementation to be compiled on all targets.
 
 mod atomic;
+mod backoff;
 mod barrier;
 mod cache_padded;
 mod deferred;
@@ -56,6 +57,7 @@ mod tag;
 mod tls2;
 
 pub use atomic::Atomic;
+pub use backoff::Backoff;
 pub use cache_padded::CachePadded;
 pub use ebr::{
     unprotected, Collector, CowShield, DefinitiveEpoch, FullShield, Local, Shield, ThinShield,

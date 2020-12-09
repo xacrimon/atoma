@@ -1,11 +1,12 @@
 use super::{
+    bag::Bag,
     epoch::{AtomicEpoch, Epoch},
     global::Global,
     shield::{Shield, ThinShield},
     ADVANCE_PROBABILITY,
 };
 use crate::{barrier::light_barrier, deferred::Deferred, CachePadded};
-use core::{cell::UnsafeCell, fmt, marker::PhantomData, sync::atomic::Ordering};
+use core::{cell::UnsafeCell, fmt, marker::PhantomData, mem, sync::atomic::Ordering};
 use std::sync::Arc;
 
 pub(crate) struct LocalState {
@@ -13,6 +14,7 @@ pub(crate) struct LocalState {
     epoch: CachePadded<AtomicEpoch>,
     shields: UnsafeCell<usize>,
     advance_counter: UnsafeCell<usize>,
+    bag: UnsafeCell<Bag>,
 }
 
 impl LocalState {
@@ -22,6 +24,7 @@ impl LocalState {
             epoch: CachePadded::new(AtomicEpoch::new(Epoch::ZERO)),
             shields: UnsafeCell::new(0),
             advance_counter: UnsafeCell::new(0),
+            bag: UnsafeCell::new(Bag::new()),
         }
     }
 
@@ -108,7 +111,34 @@ impl LocalState {
     where
         S: Shield<'a>,
     {
-        self.global.retire(deferred, shield);
+        let epoch = self.global.load_epoch_relaxed();
+        let bag = unsafe { &mut *self.bag.get() };
+        bag.try_process(epoch);
+        bag.push(deferred, epoch);
+
+        if bag.is_full() {
+            self.force_flush(shield);
+        }
+    }
+
+    pub(crate) fn flush<'a, S>(&self, shield: &S)
+    where
+        S: Shield<'a>,
+    {
+        let bag = unsafe { &mut *self.bag.get() };
+
+        if !bag.is_full() {
+            self.force_flush(shield);
+        }
+    }
+
+    fn force_flush<'a, S>(&self, shield: &S)
+    where
+        S: Shield<'a>,
+    {
+        let bag = unsafe { &mut *self.bag.get() };
+        let sealed = mem::replace(bag, Bag::new()).seal();
+        self.global.retire_bag(sealed, shield);
     }
 
     pub(crate) fn thin_shield(&self) -> ThinShield<'_> {

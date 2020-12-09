@@ -1,44 +1,18 @@
 use super::{
+    bag::SealedBag,
     ct::CrossThread,
     epoch::{AtomicEpoch, Epoch},
     local::{Local, LocalState},
     shield::{FullShield, Shield, ThinShield},
     DefinitiveEpoch,
 };
-use crate::{
-    barrier::strong_barrier, deferred::Deferred, queue::Queue, tls2::ThreadLocal, CachePadded,
-};
-use core::{
-    mem::MaybeUninit,
-    ptr,
-    sync::atomic::{fence, AtomicIsize, Ordering},
-};
+use crate::{barrier::strong_barrier, queue::Queue, tls2::ThreadLocal, CachePadded};
+use core::sync::atomic::{fence, AtomicIsize, Ordering};
 use std::sync::Arc;
-
-struct DeferredItem {
-    epoch: Epoch,
-    deferred: MaybeUninit<Deferred>,
-}
-
-impl DeferredItem {
-    fn new(epoch: Epoch, deferred: Deferred) -> Self {
-        Self {
-            epoch,
-            deferred: MaybeUninit::new(deferred),
-        }
-    }
-
-    unsafe fn execute(&self) {
-        ptr::read(&self.deferred).assume_init().call();
-    }
-}
-
-unsafe impl Send for DeferredItem {}
-unsafe impl Sync for DeferredItem {}
 
 pub(crate) struct Global {
     threads: ThreadLocal<Arc<LocalState>>,
-    deferred: Queue<DeferredItem>,
+    deferred: Queue<SealedBag>,
     global_epoch: CachePadded<AtomicEpoch>,
     deferred_amount: CachePadded<AtomicIsize>,
     pub(crate) ct: CrossThread,
@@ -86,14 +60,14 @@ impl Global {
         DefinitiveEpoch::from(self.global_epoch.load(Ordering::SeqCst))
     }
 
-    pub(crate) fn retire<'a, S>(&self, deferred: Deferred, shield: &S)
+    pub(crate) fn retire_bag<'a, S>(&self, bag: SealedBag, _shield: &S)
     where
         S: Shield<'a>,
     {
-        let epoch = self.global_epoch.load(Ordering::Relaxed);
-        let deferred = DeferredItem::new(epoch, deferred);
-        self.deferred.push(deferred, shield);
-        self.deferred_amount.fetch_add(1, Ordering::Relaxed);
+        let _epoch = self.global_epoch.load(Ordering::Relaxed);
+        let diff = bag.len() as isize;
+        self.deferred.push(bag);
+        self.deferred_amount.fetch_add(diff, Ordering::Relaxed);
     }
 
     pub(crate) fn should_advance(&self) -> bool {
@@ -109,24 +83,22 @@ impl Global {
         if let Ok(epoch) = self.try_advance() {
             let shield = local_state.thin_shield();
             fence(Ordering::SeqCst);
-            let safe_epoch = epoch.next();
-
-            unsafe { Ok(self.internal_collect(safe_epoch, &shield)) }
+            unsafe { Ok(self.internal_collect(epoch, &shield)) }
         } else {
             Err(())
         }
     }
 
-    unsafe fn internal_collect(&self, epoch: Epoch, shield: &ThinShield) -> usize {
+    unsafe fn internal_collect(&self, epoch: Epoch, _shield: &ThinShield) -> usize {
         let mut executed_amount = 0;
 
-        while let Some(deferred) = self
-            .deferred
-            .pop_if(|deferred| deferred.epoch == epoch, shield)
-        {
-            deferred.as_ref_unchecked().execute();
-            self.deferred_amount.fetch_sub(1, Ordering::Relaxed);
-            executed_amount += 1;
+        while let Some(sealed) = self.deferred.pop() {
+            if sealed.epoch().two_passed(epoch) {
+                executed_amount += sealed.run();
+            } else {
+                self.deferred.push(sealed);
+                break;
+            }
         }
 
         executed_amount

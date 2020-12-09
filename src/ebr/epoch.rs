@@ -2,7 +2,7 @@ use core::sync::atomic::{AtomicU64, Ordering};
 
 const PIN_MASK: u64 = core::u64::MAX >> 1;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct Epoch {
     data: u64,
 }
@@ -34,6 +34,10 @@ impl Epoch {
     pub fn next(self) -> Self {
         debug_assert!(!self.is_pinned());
         Self::from_raw(self.data + 1)
+    }
+
+    pub fn two_passed(self, now: Epoch) -> bool {
+        now.data.saturating_sub(self.data) >= 2
     }
 
     fn unique(self) -> u64 {

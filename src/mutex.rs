@@ -2,7 +2,7 @@ use crate::{Backoff, CachePadded};
 use core::{
     cell::UnsafeCell,
     ops::{Deref, DerefMut},
-    sync::atomic::{spin_loop_hint, AtomicBool, Ordering},
+    sync::atomic::{AtomicBool, Ordering},
 };
 
 const UNLOCKED: bool = false;

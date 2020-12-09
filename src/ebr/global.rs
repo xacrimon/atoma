@@ -6,9 +6,8 @@ use super::{
     shield::{FullShield, Shield, ThinShield},
     DefinitiveEpoch,
 };
-use crate::{queue::Queue, barrier::strong_barrier, mutex::Mutex, tls2::ThreadLocal, CachePadded};
+use crate::{barrier::strong_barrier, queue::Queue, tls2::ThreadLocal, CachePadded};
 use core::sync::atomic::{fence, AtomicIsize, Ordering};
-use std::collections::VecDeque;
 use std::sync::Arc;
 
 pub(crate) struct Global {

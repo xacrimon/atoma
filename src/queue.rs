@@ -1,13 +1,13 @@
 // LICENSE NOTICE: Most of this code has been copied from the crossbeam repository with the MIT license.
 
-use crate::{CachePadded, Backoff};
-use std::boxed::Box;
+use crate::{Backoff, CachePadded};
 use core::cell::UnsafeCell;
 use core::fmt;
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;
 use core::ptr;
 use core::sync::atomic::{self, AtomicPtr, AtomicUsize, Ordering};
+use std::boxed::Box;
 
 // Bits indicating the state of a slot:
 // * If a value has been written into the slot, `WRITE` is set.
@@ -311,49 +311,6 @@ impl<T> Queue<T> {
                     block = self.head.block.load(Ordering::Acquire);
                     backoff.spin();
                 }
-            }
-        }
-    }
-
-    /// Returns `true` if the queue is empty.
-    pub fn is_empty(&self) -> bool {
-        let head = self.head.index.load(Ordering::SeqCst);
-        let tail = self.tail.index.load(Ordering::SeqCst);
-        head >> SHIFT == tail >> SHIFT
-    }
-
-    /// Returns the number of elements in the queue.
-    pub fn len(&self) -> usize {
-        loop {
-            // Load the tail index, then load the head index.
-            let mut tail = self.tail.index.load(Ordering::SeqCst);
-            let mut head = self.head.index.load(Ordering::SeqCst);
-
-            // If the tail index didn't change, we've got consistent indices to work with.
-            if self.tail.index.load(Ordering::SeqCst) == tail {
-                // Erase the lower bits.
-                tail &= !((1 << SHIFT) - 1);
-                head &= !((1 << SHIFT) - 1);
-
-                // Fix up indices if they fall onto block ends.
-                if (tail >> SHIFT) & (LAP - 1) == LAP - 1 {
-                    tail = tail.wrapping_add(1 << SHIFT);
-                }
-                if (head >> SHIFT) & (LAP - 1) == LAP - 1 {
-                    head = head.wrapping_add(1 << SHIFT);
-                }
-
-                // Rotate indices so that head falls into the first block.
-                let lap = (head >> SHIFT) / LAP;
-                tail = tail.wrapping_sub((lap * LAP) << SHIFT);
-                head = head.wrapping_sub((lap * LAP) << SHIFT);
-
-                // Remove the lower bits.
-                tail >>= SHIFT;
-                head >>= SHIFT;
-
-                // Return the difference minus the number of blocks between tail and head.
-                return tail - head - tail / LAP;
             }
         }
     }

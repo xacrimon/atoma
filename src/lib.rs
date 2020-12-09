@@ -44,19 +44,20 @@
 //! This flag is enabled by default and disabling it will cause the more general implementation to be compiled on all targets.
 
 mod atomic;
+mod backoff;
 mod barrier;
 mod cache_padded;
 mod deferred;
 mod ebr;
 mod lazy;
 mod mutex;
+mod queue;
 mod shared;
 mod tag;
 mod tls2;
-mod backoff;
-mod queue;
 
 pub use atomic::Atomic;
+pub use backoff::Backoff;
 pub use cache_padded::CachePadded;
 pub use ebr::{
     unprotected, Collector, CowShield, DefinitiveEpoch, FullShield, Local, Shield, ThinShield,
@@ -64,4 +65,3 @@ pub use ebr::{
 };
 pub use shared::Shared;
 pub use tag::{NullTag, Tag};
-pub use backoff::Backoff;

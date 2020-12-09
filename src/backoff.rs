@@ -7,14 +7,12 @@ const SPIN_LIMIT: u32 = 6;
 const YIELD_LIMIT: u32 = 10;
 
 pub struct Backoff {
-    step: Cell<u32>
+    step: Cell<u32>,
 }
 
 impl Backoff {
     pub fn new() -> Self {
-        Self {
-            step: Cell::new(0),
-        }
+        Self { step: Cell::new(0) }
     }
 
     pub fn reset(&self) {
@@ -53,5 +51,11 @@ impl Backoff {
 
     pub fn is_completed(&self) -> bool {
         self.step.get() > YIELD_LIMIT
+    }
+}
+
+impl Default for Backoff {
+    fn default() -> Self {
+        Self::new()
     }
 }

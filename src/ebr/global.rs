@@ -6,7 +6,7 @@ use super::{
     shield::{FullShield, Shield, ThinShield},
     DefinitiveEpoch,
 };
-use crate::{barrier::strong_barrier, queue::Queue, tls2::ThreadLocal, CachePadded};
+use crate::{TlsProvider, barrier::strong_barrier, queue::Queue, tls2::ThreadLocal, CachePadded};
 use core::sync::atomic::{fence, AtomicIsize, Ordering};
 use std::sync::Arc;
 
@@ -19,9 +19,9 @@ pub(crate) struct Global {
 }
 
 impl Global {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(tls_provider: &'static dyn TlsProvider) -> Self {
         Self {
-            threads: ThreadLocal::new(),
+            threads: ThreadLocal::new(tls_provider),
             deferred: Queue::new(),
             global_epoch: CachePadded::new(AtomicEpoch::new(Epoch::ZERO)),
             deferred_amount: CachePadded::new(AtomicIsize::new(0)),

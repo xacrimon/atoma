@@ -1,6 +1,8 @@
 mod priority_queue;
 mod thread_id;
 
+pub use thread_id::{ThreadId, TlsProvider, std_tls_provider};
+
 use std::{
     marker::PhantomData,
     mem,
@@ -12,16 +14,18 @@ const MAX_THREADS: usize = 1024;
 pub struct ThreadLocal<T> {
     entries: Box<[AtomicUsize; MAX_THREADS]>,
     snapshot: AtomicUsize,
+    tls_provider: &'static dyn TlsProvider,
     _m0: PhantomData<*mut T>,
 }
 
 impl<T> ThreadLocal<T> {
-    pub fn new() -> Self {
+    pub fn new(tls_provider: &'static dyn TlsProvider) -> Self {
         let arr = unsafe { mem::transmute([0_usize; MAX_THREADS]) };
 
         Self {
             entries: Box::new(arr),
             snapshot: AtomicUsize::new(0),
+            tls_provider,
             _m0: PhantomData,
         }
     }
@@ -30,7 +34,7 @@ impl<T> ThreadLocal<T> {
     where
         F: FnOnce() -> T,
     {
-        let id = thread_id::get();
+        let id = self.tls_provider.get();
         let entry = unsafe { self.entries.get_unchecked(id).load(Ordering::SeqCst) };
 
         if entry == 0 {

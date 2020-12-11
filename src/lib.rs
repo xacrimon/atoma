@@ -65,3 +65,4 @@ pub use ebr::{
 };
 pub use shared::Shared;
 pub use tag::{NullTag, Tag};
+pub use tls2::{TlsProvider, ThreadId};

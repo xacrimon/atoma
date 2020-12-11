@@ -12,6 +12,7 @@ pub use shield::{unprotected, CowShield, FullShield, Shield, ThinShield, Unprote
 use core::fmt;
 use global::Global;
 use std::sync::Arc;
+use crate::tls2::{self, TlsProvider};
 
 const ADVANCE_PROBABILITY: usize = 128;
 
@@ -26,8 +27,13 @@ pub struct Collector {
 
 impl Collector {
     pub fn new() -> Self {
+        let tls_provider = tls2::std_tls_provider();
+        Self::with_tls_provider(tls_provider)
+    }
+
+    pub fn with_tls_provider(tls_provider: &'static dyn TlsProvider) -> Self {
         Self {
-            global: Arc::new(Global::new()),
+            global: Arc::new(Global::new(tls_provider)),
         }
     }
 

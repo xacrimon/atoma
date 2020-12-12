@@ -49,6 +49,12 @@ impl DerefMut for AllocRef {
     }
 }
 
+impl Clone for AllocRef {
+    fn clone(&self) -> Self {
+        self.clone_to_untyped()
+    }
+}
+
 impl Drop for AllocRef {
     fn drop(&mut self) {
         unsafe {
@@ -60,7 +66,7 @@ impl Drop for AllocRef {
 pub unsafe trait VirtualAllocRef: Send + Sync + 'static {
     fn alloc(&self, layout: &Layout) -> *mut u8;
     unsafe fn dealloc(&self, layout: &Layout, ptr: *mut u8);
-    fn clone(&self) -> AllocRef;
+    fn clone_to_untyped(&self) -> AllocRef;
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

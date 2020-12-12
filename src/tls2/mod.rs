@@ -14,7 +14,7 @@ use std::{
 
 const MAX_THREADS: usize = 1024;
 
-pub struct ThreadLocal<T> {
+pub(crate) struct ThreadLocal<T> {
     entries: Box<[AtomicUsize; MAX_THREADS]>,
     snapshot: AtomicUsize,
     tls_provider: &'static dyn TlsProvider,
@@ -73,4 +73,4 @@ impl<T> ThreadLocal<T> {
 unsafe impl<T> Send for ThreadLocal<T> where T: Send {}
 unsafe impl<T> Sync for ThreadLocal<T> where T: Sync {}
 
-pub struct Snapshot(usize);
+pub(crate) struct Snapshot(usize);

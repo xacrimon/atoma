@@ -55,7 +55,7 @@ mod mutex;
 mod queue;
 mod shared;
 mod tag;
-mod tls2;
+pub mod tls2;
 
 pub use atomic::Atomic;
 pub use backoff::Backoff;
@@ -64,6 +64,6 @@ pub use ebr::{
     unprotected, Collector, CowShield, DefinitiveEpoch, FullShield, Local, Shield, ThinShield,
     UnprotectedShield,
 };
+pub use generic_array;
 pub use shared::Shared;
 pub use tag::{NullTag, Tag};
-pub use tls2::{ThreadId, TlsProvider};

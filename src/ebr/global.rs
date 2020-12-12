@@ -7,8 +7,8 @@ use super::{
     DefinitiveEpoch,
 };
 use crate::{
-    alloc::AllocRef, barrier::strong_barrier, queue::Queue, tls2::ThreadLocal, CachePadded,
-    TlsProvider,
+    alloc::AllocRef, barrier::strong_barrier, queue::Queue, tls2::ThreadLocal, tls2::TlsProvider,
+    CachePadded,
 };
 use core::sync::atomic::{fence, AtomicIsize, Ordering};
 use std::sync::Arc;

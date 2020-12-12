@@ -1,13 +1,15 @@
 // LICENSE NOTICE: Most of this code has been copied from the crossbeam repository with the MIT license.
 
-use crate::{Backoff, CachePadded};
+use crate::{
+    alloc::{AllocRef, Layout},
+    Backoff, CachePadded,
+};
 use core::cell::UnsafeCell;
 use core::fmt;
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;
 use core::ptr;
 use core::sync::atomic::{self, AtomicPtr, AtomicUsize, Ordering};
-use std::boxed::Box;
 
 // Bits indicating the state of a slot:
 // * If a value has been written into the slot, `WRITE` is set.
@@ -81,7 +83,7 @@ impl<T> Block<T> {
     }
 
     /// Sets the `DESTROY` bit in slots starting from `start` and destroys the block.
-    unsafe fn destroy(this: *mut Block<T>, start: usize) {
+    unsafe fn destroy(this: *mut Block<T>, start: usize, allocator: &AllocRef) {
         // It is not necessary to set the `DESTROY` bit in the last slot because that slot has
         // begun destruction of the block.
         for i in start..BLOCK_CAP - 1 {
@@ -97,7 +99,8 @@ impl<T> Block<T> {
         }
 
         // No thread is using the block, now it is safe to destroy it.
-        drop(Box::from_raw(this));
+        let layout = Layout::new::<Block<T>>();
+        allocator.dealloc(&layout, this as *mut u8);
     }
 }
 
@@ -125,6 +128,8 @@ pub struct Queue<T> {
 
     /// Indicates that dropping a `Queue<T>` may drop values of type `T`.
     _marker: PhantomData<T>,
+
+    allocator: AllocRef,
 }
 
 unsafe impl<T: Send> Send for Queue<T> {}
@@ -132,7 +137,7 @@ unsafe impl<T: Send> Sync for Queue<T> {}
 
 impl<T> Queue<T> {
     /// Creates a new unbounded queue.
-    pub const fn new() -> Queue<T> {
+    pub const fn new(allocator: AllocRef) -> Queue<T> {
         Queue {
             head: CachePadded::new(Position {
                 block: AtomicPtr::new(ptr::null_mut()),
@@ -143,6 +148,7 @@ impl<T> Queue<T> {
                 index: AtomicUsize::new(0),
             }),
             _marker: PhantomData,
+            allocator,
         }
     }
 
@@ -168,12 +174,23 @@ impl<T> Queue<T> {
             // If we're going to have to install the next block, allocate it in advance in order to
             // make the wait for other threads as short as possible.
             if offset + 1 == BLOCK_CAP && next_block.is_none() {
-                next_block = Some(Box::new(Block::<T>::new()));
+                let layout = Layout::new::<Block<T>>();
+
+                next_block = Some(unsafe {
+                    let ptr = self.allocator.alloc(&layout) as *mut Block<T>;
+                    ptr::write(ptr, Block::new());
+                    ptr
+                });
             }
 
             // If this is the first push operation, we need to allocate the first block.
             if block.is_null() {
-                let new = Box::into_raw(Box::new(Block::<T>::new()));
+                let new = unsafe {
+                    let layout = Layout::new::<Block<T>>();
+                    let ptr = self.allocator.alloc(&layout) as *mut Block<T>;
+                    ptr::write(ptr, Block::new());
+                    ptr
+                };
 
                 if self
                     .tail
@@ -184,7 +201,7 @@ impl<T> Queue<T> {
                     self.head.block.store(new, Ordering::Release);
                     block = new;
                 } else {
-                    next_block = unsafe { Some(Box::from_raw(new)) };
+                    next_block = Some(new);
                     tail = self.tail.index.load(Ordering::Acquire);
                     block = self.tail.block.load(Ordering::Acquire);
                     continue;
@@ -203,7 +220,7 @@ impl<T> Queue<T> {
                 Ok(_) => unsafe {
                     // If we've reached the end of the block, install the next one.
                     if offset + 1 == BLOCK_CAP {
-                        let next_block = Box::into_raw(next_block.unwrap());
+                        let next_block = next_block.unwrap();;
                         let next_index = new_tail.wrapping_add(1 << SHIFT);
 
                         self.tail.block.store(next_block, Ordering::Release);
@@ -299,9 +316,9 @@ impl<T> Queue<T> {
                     // Destroy the block if we've reached the end, or if another thread wanted to
                     // destroy but couldn't because we were busy reading from the slot.
                     if offset + 1 == BLOCK_CAP {
-                        Block::destroy(block, 0);
+                        Block::destroy(block, 0, &self.allocator);
                     } else if slot.state.fetch_or(READ, Ordering::AcqRel) & DESTROY != 0 {
-                        Block::destroy(block, offset + 1);
+                        Block::destroy(block, offset + 1, &self.allocator);
                     }
 
                     return Some(value);
@@ -339,7 +356,8 @@ impl<T> Drop for Queue<T> {
                 } else {
                     // Deallocate the block and move to the next one.
                     let next = (*block).next.load(Ordering::Relaxed);
-                    drop(Box::from_raw(block));
+                    let layout = Layout::new::<Block<T>>();
+                    self.allocator.dealloc(&layout, block as *mut u8);
                     block = next;
                 }
 
@@ -348,7 +366,8 @@ impl<T> Drop for Queue<T> {
 
             // Deallocate the last remaining block.
             if !block.is_null() {
-                drop(Box::from_raw(block));
+                let layout = Layout::new::<Block<T>>();
+                self.allocator.dealloc(&layout, block as *mut u8);
             }
         }
     }
@@ -357,11 +376,5 @@ impl<T> Drop for Queue<T> {
 impl<T> fmt::Debug for Queue<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("Queue { .. }")
-    }
-}
-
-impl<T> Default for Queue<T> {
-    fn default() -> Queue<T> {
-        Queue::new()
     }
 }

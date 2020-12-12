@@ -4,7 +4,7 @@ use core::{
     ptr,
 };
 
-const INLINE_DYN_SPACE: usize = 56;
+const INLINE_DYN_SPACE: usize = 24;
 
 pub struct AllocRef {
     data: [u8; INLINE_DYN_SPACE],

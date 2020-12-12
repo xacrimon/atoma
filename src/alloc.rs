@@ -4,6 +4,33 @@ use core::{
     ptr,
 };
 
+#[cfg(feature = "std")]
+use std::alloc as stdalloc;
+
+#[cfg(feature = "std")]
+pub struct GlobalAllocator;
+
+#[cfg(feature = "std")]
+unsafe impl VirtualAllocRef for GlobalAllocator {
+    fn alloc(&self, layout: &Layout) -> *mut u8 {
+        unsafe {
+            let std_layout =
+                stdalloc::Layout::from_size_align_unchecked(layout.size(), layout.align());
+
+            stdalloc::alloc(std_layout)
+        }
+    }
+
+    unsafe fn dealloc(&self, layout: &Layout, ptr: *mut u8) {
+        let std_layout = stdalloc::Layout::from_size_align_unchecked(layout.size(), layout.align());
+        stdalloc::dealloc(ptr, std_layout)
+    }
+
+    fn clone_to_untyped(&self) -> AllocRef {
+        AllocRef::new(Self)
+    }
+}
+
 const INLINE_DYN_SPACE: usize = 24;
 
 pub struct AllocRef {

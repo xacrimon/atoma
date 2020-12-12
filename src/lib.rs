@@ -55,6 +55,7 @@ mod queue;
 mod shared;
 mod tag;
 mod tls2;
+pub mod alloc;
 
 pub use atomic::Atomic;
 pub use backoff::Backoff;

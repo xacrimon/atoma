@@ -38,8 +38,8 @@
 //! along with serialization for you with a set of helper methods on `Shared` for interacting with tags ergonomically.
 //!
 //! By default we attempt to utilize OS memory barriers to improve bookkeeping performance
-//! on Windows and Linux. For other targets we fall back to a more general although slower implementation.
-//! To make this possible we conditionally depend on `winapi` on Windows targets and `libc` on Linux targets.
+//! on Windows, Linux and macOS. For other targets we fall back to a more general although slower implementation.
+//! To make this possible we conditionally depend on `winapi` on Windows targets and `libc` on Linux and macOS targets.
 //! This accelerated bookkeeping is controlled by the `fast-barrier` Cargo feature.
 //! This flag is enabled by default and disabling it will cause the more general implementation to be compiled on all targets.
 

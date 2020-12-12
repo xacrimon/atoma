@@ -80,6 +80,7 @@ static ID_ALLOCATOR: Lazy<Mutex<IdAllocator>> = Lazy::new(|| Mutex::new(IdAlloca
 pub struct ThreadId(pub usize);
 
 impl ThreadId {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self(ID_ALLOCATOR.get().lock().allocate())
     }

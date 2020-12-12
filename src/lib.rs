@@ -1,5 +1,5 @@
 //! flize is an implementation of epoch-based lock-free resource reclamation.
-//! The core is based around the paper "Practical lock-freedom" by Keir Fraster
+//! The core is based around the paper "Practical lock-freedom" by Keir Fraser
 //! although many modifications have been made to adapt the scheme to perform well on
 //! on modern hardware and scale to a high degree.
 //!

@@ -1,7 +1,10 @@
 mod priority_queue;
 mod thread_id;
 
-pub use thread_id::{ThreadId, TlsProvider, std_tls_provider};
+pub use thread_id::{ThreadId, TlsProvider};
+
+#[cfg(feature = "std")]
+pub use thread_id::std_tls_provider;
 
 use std::{
     marker::PhantomData,

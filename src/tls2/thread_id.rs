@@ -6,19 +6,25 @@
 use super::priority_queue::PriorityQueue;
 use crate::lazy::Lazy;
 use crate::mutex::Mutex;
-use core::{cell::RefCell, fmt::Debug};
+use core::fmt::Debug;
+
+#[cfg(feature = "std")]
+use core::cell::RefCell;
 
 pub trait TlsProvider: Debug {
     fn get(&self) -> usize;
 }
 
+#[cfg(feature = "std")]
 pub fn std_tls_provider() -> &'static dyn TlsProvider {
     &StdTls
 }
 
+#[cfg(feature = "std")]
 #[derive(Debug)]
 struct StdTls;
 
+#[cfg(feature = "std")]
 impl TlsProvider for StdTls {
     fn get(&self) -> usize {
         TLS_VALUE.with(|cell| {
@@ -33,6 +39,7 @@ impl TlsProvider for StdTls {
     }
 }
 
+#[cfg(feature = "std")]
 thread_local! {
     static TLS_VALUE: RefCell<Option<ThreadId>> = RefCell::new(None);
 }

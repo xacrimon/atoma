@@ -9,10 +9,13 @@ pub use epoch::DefinitiveEpoch;
 pub use local::Local;
 pub use shield::{unprotected, CowShield, FullShield, Shield, ThinShield, UnprotectedShield};
 
+use crate::tls2::TlsProvider;
 use core::fmt;
 use global::Global;
 use std::sync::Arc;
-use crate::tls2::{self, TlsProvider};
+
+#[cfg(feature = "std")]
+use crate::tls2::std_tls_provider;
 
 const ADVANCE_PROBABILITY: usize = 128;
 
@@ -26,8 +29,9 @@ pub struct Collector {
 }
 
 impl Collector {
+    #[cfg(feature = "std")]
     pub fn new() -> Self {
-        let tls_provider = tls2::std_tls_provider();
+        let tls_provider = std_tls_provider();
         Self::with_tls_provider(tls_provider)
     }
 
@@ -63,6 +67,7 @@ impl Collector {
     }
 }
 
+#[cfg(feature = "std")]
 impl Default for Collector {
     fn default() -> Self {
         Self::new()

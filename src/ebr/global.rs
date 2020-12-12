@@ -6,7 +6,10 @@ use super::{
     shield::{FullShield, Shield, ThinShield},
     DefinitiveEpoch,
 };
-use crate::{barrier::strong_barrier, queue::Queue, tls2::ThreadLocal, CachePadded, TlsProvider};
+use crate::{
+    alloc::AllocRef, barrier::strong_barrier, queue::Queue, tls2::ThreadLocal, CachePadded,
+    TlsProvider,
+};
 use core::sync::atomic::{fence, AtomicIsize, Ordering};
 use std::sync::Arc;
 
@@ -19,10 +22,10 @@ pub(crate) struct Global {
 }
 
 impl Global {
-    pub(crate) fn new(tls_provider: &'static dyn TlsProvider) -> Self {
+    pub(crate) fn new(allocator: AllocRef, tls_provider: &'static dyn TlsProvider) -> Self {
         Self {
             threads: ThreadLocal::new(tls_provider),
-            deferred: Queue::new(),
+            deferred: Queue::new(allocator),
             global_epoch: CachePadded::new(AtomicEpoch::new(Epoch::ZERO)),
             deferred_amount: CachePadded::new(AtomicIsize::new(0)),
             ct: CrossThread::new(),

@@ -9,6 +9,7 @@ pub use epoch::DefinitiveEpoch;
 pub use local::Local;
 pub use shield::{unprotected, CowShield, FullShield, Shield, ThinShield, UnprotectedShield};
 
+use crate::alloc::AllocRef;
 use crate::tls2::TlsProvider;
 use core::fmt;
 use global::Global;
@@ -16,6 +17,9 @@ use std::sync::Arc;
 
 #[cfg(feature = "std")]
 use crate::tls2::std_tls_provider;
+
+#[cfg(feature = "std")]
+use crate::alloc::GlobalAllocator;
 
 const ADVANCE_PROBABILITY: usize = 128;
 
@@ -31,13 +35,17 @@ pub struct Collector {
 impl Collector {
     #[cfg(feature = "std")]
     pub fn new() -> Self {
+        let allocator = AllocRef::new(GlobalAllocator);
         let tls_provider = std_tls_provider();
-        Self::with_tls_provider(tls_provider)
+        Self::with_allocator_and_tls_provider(allocator, tls_provider)
     }
 
-    pub fn with_tls_provider(tls_provider: &'static dyn TlsProvider) -> Self {
+    pub fn with_allocator_and_tls_provider(
+        allocator: AllocRef,
+        tls_provider: &'static dyn TlsProvider,
+    ) -> Self {
         Self {
-            global: Arc::new(Global::new(tls_provider)),
+            global: Arc::new(Global::new(allocator, tls_provider)),
         }
     }
 

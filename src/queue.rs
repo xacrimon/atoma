@@ -226,6 +226,9 @@ impl<T> Queue<T> {
                         self.tail.block.store(next_block, Ordering::Release);
                         self.tail.index.store(next_index, Ordering::Release);
                         (*block).next.store(next_block, Ordering::Release);
+                    } else if let Some(next_block) = next_block {
+                        let layout = Layout::new::<Block<T>>();
+                        self.allocator.dealloc(&layout, next_block as *mut u8);
                     }
 
                     // Write the value into the slot.

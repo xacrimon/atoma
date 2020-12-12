@@ -1,3 +1,6 @@
+// if you thought the `barrier` and `deferred` modules were cursed, hoo boy are you in for a surprise
+// this is probably UB as shit but it gets the job done, feel free to pr if you have a better solution, i don't
+
 use core::{
     fmt, mem,
     ops::{Deref, DerefMut},

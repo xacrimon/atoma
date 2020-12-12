@@ -6,7 +6,10 @@ use super::{
     shield::{FullShield, Shield, ThinShield},
     DefinitiveEpoch,
 };
-use crate::{barrier::strong_barrier, queue::Queue, tls2::ThreadLocal, CachePadded, TlsProvider, alloc::AllocRef};
+use crate::{
+    alloc::AllocRef, barrier::strong_barrier, queue::Queue, tls2::ThreadLocal, CachePadded,
+    TlsProvider,
+};
 use core::sync::atomic::{fence, AtomicIsize, Ordering};
 use std::sync::Arc;
 

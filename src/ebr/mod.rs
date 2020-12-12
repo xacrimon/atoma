@@ -9,11 +9,11 @@ pub use epoch::DefinitiveEpoch;
 pub use local::Local;
 pub use shield::{unprotected, CowShield, FullShield, Shield, ThinShield, UnprotectedShield};
 
+use crate::alloc::AllocRef;
 use crate::tls2::TlsProvider;
 use core::fmt;
 use global::Global;
 use std::sync::Arc;
-use crate::alloc::AllocRef;
 
 #[cfg(feature = "std")]
 use crate::tls2::std_tls_provider;
@@ -40,7 +40,10 @@ impl Collector {
         Self::with_allocator_and_tls_provider(allocator, tls_provider)
     }
 
-    pub fn with_allocator_and_tls_provider(allocator: AllocRef, tls_provider: &'static dyn TlsProvider) -> Self {
+    pub fn with_allocator_and_tls_provider(
+        allocator: AllocRef,
+        tls_provider: &'static dyn TlsProvider,
+    ) -> Self {
         Self {
             global: Arc::new(Global::new(allocator, tls_provider)),
         }

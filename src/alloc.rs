@@ -16,6 +16,10 @@ impl AllocRef {
     where
         T: VirtualAllocRef,
     {
+        assert!(
+            mem::size_of::<T>() <= INLINE_DYN_SPACE && mem::align_of::<T>() <= INLINE_DYN_SPACE
+        );
+
         let mut data = [0; INLINE_DYN_SPACE];
         let ptr = &mut data as *mut [u8; INLINE_DYN_SPACE] as *mut T;
         let fat_ptr = &backing as &dyn VirtualAllocRef;

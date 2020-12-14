@@ -2,7 +2,6 @@ use crate::{NullTag, Shared, Shield, Tag};
 use core::{
     fmt,
     marker::PhantomData,
-    mem,
     sync::atomic::{AtomicUsize, Ordering},
 };
 
@@ -64,7 +63,7 @@ where
     #[cfg(feature = "std")]
     /// This constructs a `Vec<Atomic>` with null values in an optimized manner.
     pub fn null_vec(len: usize) -> Vec<Self> {
-        unsafe { mem::transmute(vec![0_usize; len]) }
+        unsafe { std::mem::transmute(vec![0_usize; len]) }
     }
 
     /// Load a the tagged pointer.

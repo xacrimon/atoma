@@ -1,7 +1,6 @@
 // LICENSE NOTICE: Most of this code has been copied from the crossbeam repository with the MIT license.
 
-use std::cell::Cell;
-use std::sync::atomic;
+use core::{cell::Cell, sync::atomic};
 
 const SPIN_LIMIT: u32 = 6;
 const YIELD_LIMIT: u32 = 10;

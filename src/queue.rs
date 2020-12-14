@@ -220,7 +220,7 @@ impl<T> Queue<T> {
                 Ok(_) => unsafe {
                     // If we've reached the end of the block, install the next one.
                     if offset + 1 == BLOCK_CAP {
-                        let next_block = next_block.unwrap();;
+                        let next_block = next_block.unwrap();
                         let next_index = new_tail.wrapping_add(1 << SHIFT);
 
                         self.tail.block.store(next_block, Ordering::Release);

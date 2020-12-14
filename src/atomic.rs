@@ -61,6 +61,7 @@ where
         unsafe { Self::from_raw(0) }
     }
 
+    #[cfg(feature = "std")]
     /// This constructs a `Vec<Atomic>` with null values in an optimized manner.
     pub fn null_vec(len: usize) -> Vec<Self> {
         unsafe { mem::transmute(vec![0_usize; len]) }

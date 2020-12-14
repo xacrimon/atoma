@@ -6,7 +6,7 @@ pub use thread_id::{ThreadId, TlsProvider};
 #[cfg(feature = "std")]
 pub use thread_id::std_tls_provider;
 
-use std::{
+use core::{
     marker::PhantomData,
     mem,
     sync::atomic::{AtomicUsize, Ordering},

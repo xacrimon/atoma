@@ -2,3 +2,4 @@
 /Cargo.lock
 /bench/target
 /recl-test/target
+/no_std-test/target

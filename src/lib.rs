@@ -1,3 +1,5 @@
+#![cfg_attr(not(feature = "std"), no_std)]
+
 //! flize is an implementation of epoch-based lock-free resource reclamation.
 //! The core is based around the paper "Practical lock-freedom" by Keir Fraser
 //! although many modifications have been made to adapt the scheme to perform well on

@@ -3,11 +3,11 @@ use super::epoch::{AtomicEpoch, Epoch};
 use super::global::Global;
 use crate::barrier::light_barrier;
 use crate::deferred::Deferred;
+use crate::heap::Arc;
 use crate::mutex::Mutex;
 use crate::CachePadded;
 use core::mem;
 use core::sync::atomic::{fence, AtomicIsize, Ordering};
-use std::sync::Arc;
 
 pub struct CrossThread {
     epoch: CachePadded<AtomicEpoch>,

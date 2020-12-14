@@ -1,14 +1,17 @@
+use super::MAX_THREADS;
+use tinyvec::ArrayVec;
+
 /// A very simple priority queue.
 /// This is only ever accessed on thread setup and exit
 /// and thus performance is mostly irrelevant.
-pub struct PriorityQueue<T> {
-    items: Vec<T>,
+pub struct PriorityQueue<T: Default> {
+    items: ArrayVec<[T; MAX_THREADS]>,
 }
 
-impl<T: Ord> PriorityQueue<T> {
+impl<T: Ord + Default> PriorityQueue<T> {
     pub fn new() -> Self {
         Self {
-            items: Vec::with_capacity(8),
+            items: ArrayVec::new(),
         }
     }
 

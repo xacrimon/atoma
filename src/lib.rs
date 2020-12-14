@@ -50,6 +50,7 @@ mod barrier;
 mod cache_padded;
 mod deferred;
 mod ebr;
+mod heap;
 mod lazy;
 mod mutex;
 mod queue;

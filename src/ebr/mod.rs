@@ -10,10 +10,10 @@ pub use local::Local;
 pub use shield::{unprotected, CowShield, FullShield, Shield, ThinShield, UnprotectedShield};
 
 use crate::alloc::AllocRef;
+use crate::heap::Arc;
 use crate::tls2::TlsProvider;
 use core::fmt;
 use global::Global;
-use std::sync::Arc;
 
 #[cfg(feature = "std")]
 use crate::tls2::std_tls_provider;
@@ -45,7 +45,7 @@ impl Collector {
         tls_provider: &'static dyn TlsProvider,
     ) -> Self {
         Self {
-            global: Arc::new(Global::new(allocator, tls_provider)),
+            global: Arc::new(Global::new(allocator.clone(), tls_provider), allocator),
         }
     }
 

@@ -6,12 +6,12 @@ use super::{
     shield::{FullShield, Shield, ThinShield},
     DefinitiveEpoch,
 };
+use crate::heap::Arc;
 use crate::{
     alloc::AllocRef, barrier::strong_barrier, queue::Queue, tls2::ThreadLocal, tls2::TlsProvider,
     CachePadded,
 };
 use core::sync::atomic::{fence, AtomicIsize, Ordering};
-use std::sync::Arc;
 
 pub(crate) struct Global {
     threads: ThreadLocal<Arc<LocalState>>,
@@ -19,22 +19,24 @@ pub(crate) struct Global {
     global_epoch: CachePadded<AtomicEpoch>,
     deferred_amount: CachePadded<AtomicIsize>,
     pub(crate) ct: CrossThread,
+    allocator: AllocRef,
 }
 
 impl Global {
     pub(crate) fn new(allocator: AllocRef, tls_provider: &'static dyn TlsProvider) -> Self {
         Self {
             threads: ThreadLocal::new(tls_provider),
-            deferred: Queue::new(allocator),
+            deferred: Queue::new(allocator.clone()),
             global_epoch: CachePadded::new(AtomicEpoch::new(Epoch::ZERO)),
             deferred_amount: CachePadded::new(AtomicIsize::new(0)),
             ct: CrossThread::new(),
+            allocator,
         }
     }
 
     pub(crate) fn local_state<'a>(this: &'a Arc<Self>) -> &'a Arc<LocalState> {
         this.threads
-            .get(|| Arc::new(LocalState::new(Arc::clone(this))))
+            .get(|| Arc::new(LocalState::new(Arc::clone(this)), this.allocator.clone()))
     }
 
     pub(crate) fn thin_shield<'a>(this: &'a Arc<Self>) -> ThinShield<'a> {

@@ -5,9 +5,9 @@ use super::{
     shield::{Shield, ThinShield},
     ADVANCE_PROBABILITY,
 };
+use crate::heap::Arc;
 use crate::{barrier::light_barrier, deferred::Deferred, CachePadded};
 use core::{cell::UnsafeCell, fmt, marker::PhantomData, mem, sync::atomic::Ordering};
-use std::sync::Arc;
 
 pub(crate) struct LocalState {
     global: Arc<Global>,

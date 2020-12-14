@@ -1,9 +1,9 @@
 use super::global::Global;
 use super::local::LocalState;
 use crate::deferred::Deferred;
+use crate::heap::Arc;
 use core::fmt;
 use core::marker::PhantomData;
-use std::sync::Arc;
 
 /// Universal methods for any shield implementation.
 pub trait Shield<'a>: Clone + fmt::Debug {

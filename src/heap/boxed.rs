@@ -1,8 +1,12 @@
 use crate::alloc::{AllocRef, Layout};
-use core::{ops::Deref, ptr};
+use core::{mem, mem::MaybeUninit, ops::Deref, ptr};
+
+unsafe fn assume_init_read<T>(v: &MaybeUninit<T>) -> T {
+    ptr::read(v.as_ptr())
+}
 
 pub struct Box<T> {
-    allocator: AllocRef,
+    allocator: MaybeUninit<AllocRef>,
     raw: *mut T,
 }
 
@@ -15,7 +19,28 @@ impl<T> Box<T> {
             ptr::write(raw, value);
         }
 
-        Self { allocator, raw }
+        Self {
+            allocator: MaybeUninit::new(allocator),
+            raw,
+        }
+    }
+
+    pub fn move_out(self) -> T {
+        let layout = Layout::new::<T>();
+
+        unsafe {
+            let value = ptr::read(self.raw);
+            assume_init_read(&self.allocator).dealloc(&layout, self.raw as *mut u8);
+            mem::forget(self);
+            value
+        }
+    }
+
+    pub fn into_raw(self) -> (*mut T, AllocRef) {
+        let allocator = unsafe { assume_init_read(&self.allocator) };
+        let raw = self.raw;
+        mem::forget(self);
+        (raw, allocator)
     }
 }
 
@@ -33,7 +58,7 @@ impl<T> Drop for Box<T> {
 
         unsafe {
             ptr::drop_in_place(self.raw);
-            self.allocator.dealloc(&layout, self.raw as *mut u8);
+            assume_init_read(&self.allocator).dealloc(&layout, self.raw as *mut u8);
         }
     }
 }

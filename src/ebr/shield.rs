@@ -96,7 +96,7 @@ impl<'a> Shield<'a> for FullShield<'a> {
         F: FnOnce() + 'a,
     {
         let epoch = self.global.load_epoch_relaxed();
-        let deferred = Deferred::new(f);
+        let deferred = Deferred::new(f, &self.global.allocator);
 
         if let Some(sealed) = self.global.ct.retire(deferred, epoch) {
             self.global.retire_bag(sealed, self);
@@ -179,7 +179,7 @@ impl<'a> Shield<'a> for ThinShield<'a> {
     where
         F: FnOnce() + 'a,
     {
-        let deferred = Deferred::new(f);
+        let deferred = Deferred::new(f, self.local_state.allocator());
         self.local_state.retire(deferred, self);
     }
 

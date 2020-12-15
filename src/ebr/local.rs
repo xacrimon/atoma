@@ -6,7 +6,7 @@ use super::{
     ADVANCE_PROBABILITY,
 };
 use crate::heap::Arc;
-use crate::{barrier::light_barrier, deferred::Deferred, CachePadded};
+use crate::{alloc::AllocRef, barrier::light_barrier, deferred::Deferred, CachePadded};
 use core::{cell::UnsafeCell, fmt, marker::PhantomData, mem, sync::atomic::Ordering};
 
 pub(crate) struct LocalState {
@@ -26,6 +26,10 @@ impl LocalState {
             advance_counter: UnsafeCell::new(0),
             bag: UnsafeCell::new(Bag::new()),
         }
+    }
+
+    pub(crate) fn allocator(&self) -> &AllocRef {
+        &self.global.allocator
     }
 
     /// This function loads the epoch without any ordering constraints.

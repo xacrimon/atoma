@@ -19,13 +19,13 @@ pub(crate) struct Global {
     global_epoch: CachePadded<AtomicEpoch>,
     deferred_amount: CachePadded<AtomicIsize>,
     pub(crate) ct: CrossThread,
-    allocator: AllocRef,
+    pub(crate) allocator: AllocRef,
 }
 
 impl Global {
     pub(crate) fn new(allocator: AllocRef, tls_provider: &'static dyn TlsProvider) -> Self {
         Self {
-            threads: ThreadLocal::new(tls_provider),
+            threads: ThreadLocal::new(tls_provider, allocator.clone()),
             deferred: Queue::new(allocator.clone()),
             global_epoch: CachePadded::new(AtomicEpoch::new(Epoch::ZERO)),
             deferred_amount: CachePadded::new(AtomicIsize::new(0)),

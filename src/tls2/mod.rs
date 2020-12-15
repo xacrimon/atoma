@@ -6,6 +6,7 @@ pub use thread_id::{ThreadId, TlsProvider};
 #[cfg(feature = "std")]
 pub use thread_id::std_tls_provider;
 
+use crate::{alloc::AllocRef, heap::Box};
 use core::{
     marker::PhantomData,
     mem,
@@ -19,17 +20,19 @@ pub(crate) struct ThreadLocal<T> {
     snapshot: AtomicUsize,
     tls_provider: &'static dyn TlsProvider,
     _m0: PhantomData<*mut T>,
+    allocator: AllocRef,
 }
 
 impl<T> ThreadLocal<T> {
-    pub fn new(tls_provider: &'static dyn TlsProvider) -> Self {
+    pub fn new(tls_provider: &'static dyn TlsProvider, allocator: AllocRef) -> Self {
         let arr = unsafe { mem::transmute([0_usize; MAX_THREADS]) };
 
         Self {
-            entries: Box::new(arr),
+            entries: Box::new(arr, allocator.clone()),
             snapshot: AtomicUsize::new(0),
             tls_provider,
             _m0: PhantomData,
+            allocator,
         }
     }
 
@@ -42,8 +45,8 @@ impl<T> ThreadLocal<T> {
 
         if entry == 0 {
             self.snapshot.fetch_add(1, Ordering::SeqCst);
-            let item = Box::new(create());
-            let raw = Box::into_raw(item) as usize;
+            let item = Box::new(create(), self.allocator.clone());
+            let raw = Box::into_raw(item).0 as usize;
             unsafe {
                 self.entries.get_unchecked(id).store(raw, Ordering::SeqCst);
             }

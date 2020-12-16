@@ -12,6 +12,9 @@ documentation = "https://docs.rs/flize"
 keywords = ["atomic", "concurrent", "memory", "epoch", "reclamation"]
 categories = ["concurrency", "algorithms", "data-structures"]
 
+[workspace]
+members = ["examples/queue"]
+
 [features]
 default = ["std", "fast-barrier"]
 std = []

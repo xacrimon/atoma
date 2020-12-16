@@ -13,7 +13,7 @@ keywords = ["atomic", "concurrent", "memory", "epoch", "reclamation"]
 categories = ["concurrency", "algorithms", "data-structures"]
 
 [workspace]
-members = ["examples/queue"]
+members = ["examples/queue", "bench", "no-std-test", "recl-test"]
 
 [features]
 default = ["std", "fast-barrier"]

@@ -4,11 +4,6 @@ version = "0.1.0"
 authors = ["Acrimon <joel.wejdenstal@gmail.com>"]
 edition = "2018"
 
-[profile.bench]
-lto = "fat"
-codegen-units = 1
-incremental = false
-
 [dev-dependencies]
 criterion = "=0.3.3"
 flize = { path = ".." }

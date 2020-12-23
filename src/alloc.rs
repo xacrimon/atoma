@@ -2,7 +2,8 @@
 // this is probably UB as shit but it gets the job done, feel free to pr if you have a better solution, i don't
 
 use core::{
-    fmt, mem,
+    fmt,
+    mem::{self, MaybeUninit},
     ops::{Deref, DerefMut},
     ptr,
 };
@@ -37,7 +38,7 @@ unsafe impl VirtualAllocRef for GlobalAllocator {
 const INLINE_DYN_SPACE: usize = 24;
 
 pub struct AllocRef {
-    data: [u8; INLINE_DYN_SPACE],
+    data: MaybeUninit<[u8; INLINE_DYN_SPACE]>,
     vtable: usize,
 }
 
@@ -50,8 +51,8 @@ impl AllocRef {
             mem::size_of::<T>() <= INLINE_DYN_SPACE && mem::align_of::<T>() <= INLINE_DYN_SPACE
         );
 
-        let mut data = [0; INLINE_DYN_SPACE];
-        let ptr = &mut data as *mut [u8; INLINE_DYN_SPACE] as *mut T;
+        let mut data = MaybeUninit::uninit();;
+        let ptr = data.as_mut_ptr() as *mut T;
         let fat_ptr = &backing as &dyn VirtualAllocRef;
         let vtable = unsafe { mem::transmute::<&dyn VirtualAllocRef, [usize; 2]>(fat_ptr)[1] };
 
@@ -67,14 +68,14 @@ impl Deref for AllocRef {
     type Target = dyn VirtualAllocRef;
 
     fn deref(&self) -> &Self::Target {
-        let object_ptr = &self.data as *const [u8; INLINE_DYN_SPACE] as usize;
+        let object_ptr = self.data.as_ptr() as usize;
         unsafe { mem::transmute::<[usize; 2], &Self::Target>([object_ptr, self.vtable]) }
     }
 }
 
 impl DerefMut for AllocRef {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        let object_ptr = &mut self.data as *mut [u8; INLINE_DYN_SPACE] as usize;
+        let object_ptr = self.data.as_mut_ptr() as usize;
         unsafe { mem::transmute::<[usize; 2], &mut Self::Target>([object_ptr, self.vtable]) }
     }
 }

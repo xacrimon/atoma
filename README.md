@@ -22,6 +22,12 @@ in a concurrent environment and you don't want to pay the price of locking.
 
 [![minimum rustc version](https://img.shields.io/badge/rustc-1.36+-orange.svg)](https://crates.io/crates/flize)
 
+## Examples
+
+The `examples` directory contains some sample code using flize.
+We're always keen to add more examples so please feel free to expand
+the collection if you've got a good implementation of something relatively simple.
+
 ## Testing
 
 Testing is done automatically by our CI on every push and pull request.

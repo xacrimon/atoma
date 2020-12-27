@@ -22,6 +22,18 @@ in a concurrent environment and you don't want to pay the price of locking.
 
 [![minimum rustc version](https://img.shields.io/badge/rustc-1.36+-orange.svg)](https://crates.io/crates/flize)
 
+## Features
+
+- `std` - Enables the default TLS and allocator providers that hook into the standard library.
+- `fast-barrier` - Accelerates shield creation and destruction significantly on Windows, macOS and Linux and
+falls back to a platform agnostic implementation on other targets.
+
+Both are enabled by default.
+
+## no_std
+
+Flize supports `no_std` with or without `alloc` by disabling the `std` feature.
+
 ## Examples
 
 The `examples` directory contains some sample code using flize.

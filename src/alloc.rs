@@ -139,3 +139,27 @@ impl fmt::Display for LayoutErr {
         f.write_str("invalid parameters to Layout::from_size_align")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::mem;
+
+    #[test]
+    fn dyn_ptr_layout() {
+        trait Imaginary {
+            fn void(&self) {}
+        }
+
+        struct Real;
+
+        impl Imaginary for Real {}
+
+        let a = Box::new(Real);
+        let b = Box::new(Real);
+
+        let a_second_entry = unsafe { mem::transmute::<&dyn Imaginary, [usize; 2]>(&*a)[1] };
+        let b_second_entry = unsafe { mem::transmute::<&dyn Imaginary, [usize; 2]>(&*b)[1] };
+
+        assert_eq!(a_second_entry, b_second_entry);
+    }
+}

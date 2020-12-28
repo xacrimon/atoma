@@ -100,23 +100,6 @@ where
         unsafe { Shared::from_raw(old_raw) }
     }
 
-    /// Conditionally swap the stored tagged pointer, always returns the previous value.
-    pub fn compare_and_swap<'collector, 'shield, S>(
-        &self,
-        current: Shared<'_, V, T1, T2>,
-        new: Shared<'_, V, T1, T2>,
-        order: Ordering,
-        _shield: &'shield S,
-    ) -> Shared<'shield, V, T1, T2>
-    where
-        S: Shield<'collector>,
-    {
-        let current_raw = current.into_raw();
-        let new_raw = new.into_raw();
-        let old_raw = self.data.compare_and_swap(current_raw, new_raw, order);
-        unsafe { Shared::from_raw(old_raw) }
-    }
-
     /// Conditionally exchange the stored tagged pointer, always returns
     /// the previous value and a result indicating if it was written or not.
     /// On success this value is guaranteed to be equal to current.

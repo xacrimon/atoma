@@ -51,7 +51,7 @@ impl AllocRef {
             mem::size_of::<T>() <= INLINE_DYN_SPACE && mem::align_of::<T>() <= INLINE_DYN_SPACE
         );
 
-        let mut data = MaybeUninit::uninit();;
+        let mut data = MaybeUninit::uninit();
         let ptr = data.as_mut_ptr() as *mut T;
         let fat_ptr = &backing as &dyn VirtualAllocRef;
         let vtable = unsafe { mem::transmute::<&dyn VirtualAllocRef, [usize; 2]>(fat_ptr)[1] };

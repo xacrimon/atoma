@@ -84,7 +84,9 @@ impl AtomicEpoch {
     pub fn compare_and_set_non_unique(&self, current: Epoch, new: Epoch, order: Ordering) {
         let current_raw = current.into_raw();
         let new_raw = new.into_raw();
-        self.raw.compare_and_swap(current_raw, new_raw, order);
+        let _ = self
+            .raw
+            .compare_exchange(current_raw, new_raw, order, Ordering::Relaxed);
     }
 
     pub fn try_advance(&self, current: Epoch) -> Result<Epoch, ()> {

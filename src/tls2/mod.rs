@@ -10,7 +10,7 @@ use crate::{alloc::AllocRef, heap::Box};
 use core::{
     marker::PhantomData,
     mem,
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::atomic::{self, AtomicUsize, Ordering},
 };
 
 const MAX_THREADS: usize = 1024;
@@ -41,16 +41,18 @@ impl<T> ThreadLocal<T> {
         F: FnOnce() -> T,
     {
         let id = self.tls_provider.get();
-        let entry = unsafe { self.entries.get_unchecked(id).load(Ordering::SeqCst) };
+        let entry = unsafe { self.entries.get_unchecked(id).load(Ordering::Relaxed) };
 
         if entry == 0 {
-            self.snapshot.fetch_add(1, Ordering::SeqCst);
+            self.snapshot.fetch_add(1, Ordering::Release);
+            atomic::compiler_fence(Ordering::SeqCst);
             let item = Box::new(create(), self.allocator.clone());
             let raw = Box::into_raw(item).0 as usize;
             unsafe {
-                self.entries.get_unchecked(id).store(raw, Ordering::SeqCst);
+                self.entries.get_unchecked(id).store(raw, Ordering::Release);
             }
-            self.snapshot.fetch_add(1, Ordering::SeqCst);
+            atomic::compiler_fence(Ordering::SeqCst);
+            self.snapshot.fetch_add(1, Ordering::Release);
             unsafe { &*(raw as *const T) }
         } else {
             unsafe { &*(entry as *const T) }
@@ -60,16 +62,16 @@ impl<T> ThreadLocal<T> {
     pub fn iter(&self) -> impl Iterator<Item = &T> + '_ {
         self.entries
             .iter()
-            .filter_map(|atomic| unsafe { (atomic.load(Ordering::SeqCst) as *const T).as_ref() })
+            .filter_map(|atomic| unsafe { (atomic.load(Ordering::Acquire) as *const T).as_ref() })
     }
 
     pub fn snapshot(&self) -> Snapshot {
-        let snapshot = self.snapshot.load(Ordering::SeqCst);
+        let snapshot = self.snapshot.load(Ordering::Acquire);
         Snapshot(snapshot)
     }
 
     pub fn changed_since(&self, snapshot: Snapshot) -> bool {
-        self.snapshot.load(Ordering::SeqCst) != snapshot.0
+        self.snapshot.load(Ordering::Acquire) != snapshot.0
     }
 }
 

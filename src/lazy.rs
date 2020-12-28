@@ -85,7 +85,7 @@ where
                     self.write_value(value);
                 }
 
-                fence(Ordering::SeqCst);
+                fence(Ordering::Release);
                 relaxed_set_init(&self.state);
                 break unsafe { self.value_ref() };
             }

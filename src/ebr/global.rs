@@ -62,7 +62,7 @@ impl Global {
     }
 
     pub(crate) fn definitive_epoch(&self) -> DefinitiveEpoch {
-        DefinitiveEpoch::from(self.global_epoch.load(Ordering::SeqCst))
+        DefinitiveEpoch::from(self.global_epoch.load(Ordering::Acquire))
     }
 
     pub(crate) fn retire_bag<'a, S>(&self, bag: SealedBag, _shield: &S)

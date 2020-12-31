@@ -15,6 +15,10 @@ categories = ["concurrency", "algorithms", "data-structures"]
 [workspace]
 members = ["examples/queue", "bench", "no-std-test", "recl-test"]
 
+[profile.bench]
+lto = "fat"
+codegen-units = 1
+
 [features]
 default = ["std", "fast-barrier"]
 std = []

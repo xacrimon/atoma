@@ -64,8 +64,7 @@ pub use atomic::Atomic;
 pub use backoff::Backoff;
 pub use cache_padded::CachePadded;
 pub use ebr::{
-    unprotected, Collector, CowShield, DefinitiveEpoch, FullShield, Local, Shield, ThinShield,
-    UnprotectedShield,
+    unprotected, Collector, CowShield, FullShield, Local, Shield, ThinShield, UnprotectedShield,
 };
 pub use generic_array;
 pub use shared::Shared;

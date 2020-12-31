@@ -4,7 +4,6 @@ use super::{
     epoch::{AtomicEpoch, Epoch},
     local::{Local, LocalState},
     shield::{FullShield, Shield, ThinShield},
-    DefinitiveEpoch,
 };
 use crate::heap::Arc;
 use crate::{
@@ -59,10 +58,6 @@ impl Global {
 
     pub(crate) fn load_epoch_relaxed(&self) -> Epoch {
         self.global_epoch.load(Ordering::Relaxed)
-    }
-
-    pub(crate) fn definitive_epoch(&self) -> DefinitiveEpoch {
-        DefinitiveEpoch::from(self.global_epoch.load(Ordering::Acquire))
     }
 
     pub(crate) fn retire_bag<'a, S>(&self, bag: SealedBag, _shield: &S)

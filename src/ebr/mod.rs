@@ -5,7 +5,6 @@ mod global;
 mod local;
 mod shield;
 
-pub use epoch::DefinitiveEpoch;
 pub use local::Local;
 pub use shield::{unprotected, CowShield, FullShield, Shield, ThinShield, UnprotectedShield};
 
@@ -47,10 +46,6 @@ impl Collector {
         Self {
             global: Arc::new(Global::new(allocator.clone(), tls_provider), allocator),
         }
-    }
-
-    pub fn epoch(&self) -> DefinitiveEpoch {
-        self.global.definitive_epoch()
     }
 
     /// Creates a shield on the appropriate local given the current thread.

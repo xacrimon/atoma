@@ -51,15 +51,6 @@ impl PartialEq for Epoch {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct DefinitiveEpoch(pub u64);
-
-impl From<Epoch> for DefinitiveEpoch {
-    fn from(epoch: Epoch) -> Self {
-        Self(epoch.data)
-    }
-}
-
 pub struct AtomicEpoch {
     raw: AtomicU64,
 }

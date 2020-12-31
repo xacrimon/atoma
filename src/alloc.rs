@@ -94,10 +94,12 @@ pub unsafe trait VirtualAllocRef: Send + Sync + 'static {
     unsafe fn dealloc(&self, layout: &Layout, ptr: *mut u8);
     fn clone_untyped(&self) -> AllocRef;
 
+    #[doc(hidden)]
     unsafe fn drop_in_place(&mut self) {
         ptr::drop_in_place(self);
     }
 
+    #[doc(hidden)]
     fn meta() -> AllocatorMeta {
         unsafe {
             AllocatorMeta {

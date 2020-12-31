@@ -4,7 +4,6 @@
 use core::{
     fmt,
     mem::{self, MaybeUninit},
-    ops::{Deref, DerefMut},
     ptr,
 };
 
@@ -16,30 +15,38 @@ pub struct GlobalAllocator;
 
 #[cfg(feature = "std")]
 unsafe impl VirtualAllocRef for GlobalAllocator {
-    fn alloc(&self, layout: &Layout) -> *mut u8 {
-        unsafe {
-            let std_layout =
-                stdalloc::Layout::from_size_align_unchecked(layout.size(), layout.align());
+    fn meta() -> &'static AllocatorMeta {
+        static META: AllocatorMeta = AllocatorMeta {
+            alloc: |_state, layout| unsafe {
+                let std_layout =
+                    stdalloc::Layout::from_size_align_unchecked(layout.size(), layout.align());
+                stdalloc::alloc(std_layout)
+            },
+            dealloc: |_state, layout, ptr| unsafe {
+                let std_layout =
+                    stdalloc::Layout::from_size_align_unchecked(layout.size(), layout.align());
+                stdalloc::dealloc(ptr, std_layout);
+            },
+            clone: |_state| AllocRef::new(Self),
+            drop: |_state| {},
+        };
 
-            stdalloc::alloc(std_layout)
-        }
+        &META
     }
+}
 
-    unsafe fn dealloc(&self, layout: &Layout, ptr: *mut u8) {
-        let std_layout = stdalloc::Layout::from_size_align_unchecked(layout.size(), layout.align());
-        stdalloc::dealloc(ptr, std_layout)
-    }
-
-    fn clone_to_untyped(&self) -> AllocRef {
-        AllocRef::new(Self)
-    }
+pub struct AllocatorMeta {
+    alloc: fn(*const MaybeUninit<[u8; INLINE_DYN_SPACE]>, &Layout) -> *mut u8,
+    dealloc: fn(*const MaybeUninit<[u8; INLINE_DYN_SPACE]>, &Layout, *mut u8),
+    clone: fn(*const MaybeUninit<[u8; INLINE_DYN_SPACE]>) -> AllocRef,
+    drop: fn(*const MaybeUninit<[u8; INLINE_DYN_SPACE]>),
 }
 
 const INLINE_DYN_SPACE: usize = 24;
 
 pub struct AllocRef {
     data: MaybeUninit<[u8; INLINE_DYN_SPACE]>,
-    vtable: usize,
+    meta: &'static AllocatorMeta,
 }
 
 impl AllocRef {
@@ -53,51 +60,38 @@ impl AllocRef {
 
         let mut data = MaybeUninit::uninit();
         let ptr = data.as_mut_ptr() as *mut T;
-        let fat_ptr = &backing as &dyn VirtualAllocRef;
-        let vtable = unsafe { mem::transmute::<&dyn VirtualAllocRef, [usize; 2]>(fat_ptr)[1] };
+        let meta = T::meta();
 
         unsafe {
             ptr::write(ptr, backing);
         }
 
-        Self { data, vtable }
+        Self { data, meta }
     }
-}
 
-impl Deref for AllocRef {
-    type Target = dyn VirtualAllocRef;
-
-    fn deref(&self) -> &Self::Target {
-        let object_ptr = self.data.as_ptr() as usize;
-        unsafe { mem::transmute::<[usize; 2], &Self::Target>([object_ptr, self.vtable]) }
+    pub fn alloc(&self, layout: &Layout) -> *mut u8 {
+        (self.meta.alloc)(&self.data, layout)
     }
-}
 
-impl DerefMut for AllocRef {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        let object_ptr = self.data.as_mut_ptr() as usize;
-        unsafe { mem::transmute::<[usize; 2], &mut Self::Target>([object_ptr, self.vtable]) }
+    pub fn dealloc(&self, layout: &Layout, ptr: *mut u8) {
+        (self.meta.dealloc)(&self.data, layout, ptr);
     }
 }
 
 impl Clone for AllocRef {
     fn clone(&self) -> Self {
-        self.clone_to_untyped()
+        (self.meta.clone)(&self.data)
     }
 }
 
 impl Drop for AllocRef {
     fn drop(&mut self) {
-        unsafe {
-            ptr::drop_in_place(self.deref_mut());
-        }
+        (self.meta.drop)(&self.data);
     }
 }
 
 pub unsafe trait VirtualAllocRef: Send + Sync + 'static {
-    fn alloc(&self, layout: &Layout) -> *mut u8;
-    unsafe fn dealloc(&self, layout: &Layout, ptr: *mut u8);
-    fn clone_to_untyped(&self) -> AllocRef;
+    fn meta() -> &'static AllocatorMeta;
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -137,29 +131,5 @@ pub struct LayoutErr {
 impl fmt::Display for LayoutErr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("invalid parameters to Layout::from_size_align")
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::mem;
-
-    #[test]
-    fn dyn_ptr_layout() {
-        trait Imaginary {
-            fn void(&self) {}
-        }
-
-        struct Real;
-
-        impl Imaginary for Real {}
-
-        let a = Box::new(Real);
-        let b = Box::new(Real);
-
-        let a_second_entry = unsafe { mem::transmute::<&dyn Imaginary, [usize; 2]>(&*a)[1] };
-        let b_second_entry = unsafe { mem::transmute::<&dyn Imaginary, [usize; 2]>(&*b)[1] };
-
-        assert_eq!(a_second_entry, b_second_entry);
     }
 }

@@ -15,21 +15,18 @@ pub struct GlobalAllocator;
 
 #[cfg(feature = "std")]
 unsafe impl VirtualAllocRef for GlobalAllocator {
-    fn meta() -> &'static AllocatorMeta {
-        &AllocatorMeta {
-            alloc: |_state, layout| unsafe {
-                let std_layout =
-                    stdalloc::Layout::from_size_align_unchecked(layout.size(), layout.align());
-                stdalloc::alloc(std_layout)
-            },
-            dealloc: |_state, layout, ptr| unsafe {
-                let std_layout =
-                    stdalloc::Layout::from_size_align_unchecked(layout.size(), layout.align());
-                stdalloc::dealloc(ptr, std_layout);
-            },
-            clone: |_state| AllocRef::new(Self),
-            drop: |_state| {},
-        }
+    unsafe fn alloc(&self, layout: &Layout) -> *mut u8 {
+        let std_layout = stdalloc::Layout::from_size_align_unchecked(layout.size(), layout.align());
+        stdalloc::alloc(std_layout)
+    }
+
+    unsafe fn dealloc(&self, layout: &Layout, ptr: *mut u8) {
+        let std_layout = stdalloc::Layout::from_size_align_unchecked(layout.size(), layout.align());
+        stdalloc::dealloc(ptr, std_layout)
+    }
+
+    fn clone_untyped(&self) -> AllocRef {
+        AllocRef::new(Self)
     }
 }
 
@@ -44,7 +41,7 @@ const INLINE_DYN_SPACE: usize = 24;
 
 pub struct AllocRef {
     data: MaybeUninit<[u8; INLINE_DYN_SPACE]>,
-    meta: &'static AllocatorMeta,
+    meta: fn() -> AllocatorMeta,
 }
 
 impl AllocRef {
@@ -58,7 +55,7 @@ impl AllocRef {
 
         let mut data = MaybeUninit::uninit();
         let ptr = data.as_mut_ptr() as *mut T;
-        let meta = T::meta();
+        let meta = T::meta;
 
         unsafe {
             ptr::write(ptr, backing);
@@ -68,28 +65,49 @@ impl AllocRef {
     }
 
     pub fn alloc(&self, layout: &Layout) -> *mut u8 {
-        (self.meta.alloc)(&self.data, layout)
+        (self.meta().alloc)(&self.data, layout)
     }
 
     pub fn dealloc(&self, layout: &Layout, ptr: *mut u8) {
-        (self.meta.dealloc)(&self.data, layout, ptr);
+        (self.meta().dealloc)(&self.data, layout, ptr);
+    }
+
+    fn meta(&self) -> AllocatorMeta {
+        (self.meta)()
     }
 }
 
 impl Clone for AllocRef {
     fn clone(&self) -> Self {
-        (self.meta.clone)(&self.data)
+        (self.meta().clone)(&self.data)
     }
 }
 
 impl Drop for AllocRef {
     fn drop(&mut self) {
-        (self.meta.drop)(&self.data);
+        (self.meta().drop)(&self.data);
     }
 }
 
 pub unsafe trait VirtualAllocRef: Send + Sync + 'static {
-    fn meta() -> &'static AllocatorMeta;
+    unsafe fn alloc(&self, layout: &Layout) -> *mut u8;
+    unsafe fn dealloc(&self, layout: &Layout, ptr: *mut u8);
+    fn clone_untyped(&self) -> AllocRef;
+
+    unsafe fn drop_in_place(&mut self) {
+        ptr::drop_in_place(self);
+    }
+
+    fn meta() -> AllocatorMeta {
+        unsafe {
+            AllocatorMeta {
+                alloc: mem::transmute(Self::alloc as usize),
+                dealloc: mem::transmute(Self::dealloc as usize),
+                clone: mem::transmute(Self::clone_untyped as usize),
+                drop: mem::transmute(Self::drop_in_place as usize),
+            }
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

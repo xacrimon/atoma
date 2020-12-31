@@ -16,7 +16,7 @@ pub struct GlobalAllocator;
 #[cfg(feature = "std")]
 unsafe impl VirtualAllocRef for GlobalAllocator {
     fn meta() -> &'static AllocatorMeta {
-        static META: AllocatorMeta = AllocatorMeta {
+        &AllocatorMeta {
             alloc: |_state, layout| unsafe {
                 let std_layout =
                     stdalloc::Layout::from_size_align_unchecked(layout.size(), layout.align());
@@ -29,9 +29,7 @@ unsafe impl VirtualAllocRef for GlobalAllocator {
             },
             clone: |_state| AllocRef::new(Self),
             drop: |_state| {},
-        };
-
-        &META
+        }
     }
 }
 

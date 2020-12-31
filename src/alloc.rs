@@ -29,6 +29,7 @@ unsafe impl VirtualAllocRef for GlobalAllocator {
     }
 }
 
+#[doc(hidden)]
 pub struct AllocatorMeta {
     alloc: fn(*const MaybeUninit<[u8; INLINE_DYN_SPACE]>, &Layout) -> *mut u8,
     dealloc: fn(*const MaybeUninit<[u8; INLINE_DYN_SPACE]>, &Layout, *mut u8),

@@ -78,7 +78,7 @@ where
         let backoff = Backoff::new();
 
         loop {
-            fence(Ordering::Acquire);
+            fence(Ordering::SeqCst);
 
             if relaxed_is_init(&self.state) {
                 break unsafe { self.value_ref() };
@@ -92,7 +92,7 @@ where
                     self.write_value(value);
                 }
 
-                fence(Ordering::Release);
+                fence(Ordering::SeqCst);
                 relaxed_set_init(&self.state);
                 break unsafe { self.value_ref() };
             }

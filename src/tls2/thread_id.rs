@@ -11,11 +11,18 @@ use core::fmt::Debug;
 #[cfg(feature = "std")]
 use core::cell::RefCell;
 
+/// A `TlsProvider` is any implementation that can provide storage of a thread id.
+/// Because flize is designed to run on systems where the standard library doesn't exist
+/// we have this trait so you can use your own implementation.
+///
+/// The `get` method should return a thread id which this implementation should lazily initialize on the first call.
 pub trait TlsProvider: Debug {
     fn get(&self) -> usize;
 }
 
 #[cfg(feature = "std")]
+/// This provider is only usable with the `std` feature and uses the standard library
+/// TLS implemenation.
 pub fn std_tls_provider() -> &'static dyn TlsProvider {
     &StdTls
 }
@@ -77,6 +84,11 @@ impl IdAllocator {
 static ID_ALLOCATOR: Lazy<Mutex<IdAllocator>> = Lazy::new(|| Mutex::new(IdAllocator::new()));
 
 #[derive(Debug)]
+/// A thread id acts as a handle and allocation of a thread id. You can create a new instance of this struct
+/// to allocate a new thread id in your `TlsProvider` implementation.
+///
+/// Because this struct acts as a RAII handle that keeps the id allocated you may not drop it until the thread exits.
+/// The implementation should take the integer stored in this struct and return it.
 pub struct ThreadId(pub usize);
 
 impl ThreadId {

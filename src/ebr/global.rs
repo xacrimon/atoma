@@ -93,7 +93,7 @@ impl Global {
         let mut executed_amount = 0;
 
         while let Some(sealed) = self.deferred.pop() {
-            if sealed.epoch().two_passed(epoch) {
+            if sealed.epoch().have_passed(epoch, 2) {
                 executed_amount += sealed.run();
             } else {
                 self.deferred.push(sealed);

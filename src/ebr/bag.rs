@@ -31,7 +31,7 @@ impl Bag {
         let collect_until = self
             .deferred
             .iter()
-            .filter(|(_, epoch)| epoch.two_passed(current_epoch))
+            .filter(|(_, epoch)| epoch.have_passed(current_epoch, 1))
             .fuse()
             .count();
 

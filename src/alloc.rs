@@ -1,5 +1,3 @@
-// if you thought the `barrier` and `deferred` modules were cursed, hoo boy are you in for a surprise
-
 use core::{
     fmt,
     mem::{self, MaybeUninit},
@@ -41,7 +39,7 @@ const INLINE_DYN_SPACE: usize = 24;
 
 pub struct AllocRef {
     data: MaybeUninit<[u8; INLINE_DYN_SPACE]>,
-    meta: fn() -> AllocatorMeta,
+    meta: &'static AllocatorMeta,
 }
 
 impl AllocRef {
@@ -55,7 +53,7 @@ impl AllocRef {
 
         let mut data = MaybeUninit::uninit();
         let ptr = data.as_mut_ptr() as *mut T;
-        let meta = T::meta;
+        let meta = T::VTABLE;
 
         unsafe {
             ptr::write(ptr, backing);
@@ -65,28 +63,29 @@ impl AllocRef {
     }
 
     pub fn alloc(&self, layout: &Layout) -> *mut u8 {
-        (self.meta().alloc)(&self.data, layout)
+        (self.meta.alloc)(&self.data, layout)
     }
 
     pub fn dealloc(&self, layout: &Layout, ptr: *mut u8) {
-        (self.meta().dealloc)(&self.data, layout, ptr);
-    }
-
-    fn meta(&self) -> AllocatorMeta {
-        (self.meta)()
+        (self.meta.dealloc)(&self.data, layout, ptr);
     }
 }
 
 impl Clone for AllocRef {
     fn clone(&self) -> Self {
-        (self.meta().clone)(&self.data)
+        (self.meta.clone)(&self.data)
     }
 }
 
 impl Drop for AllocRef {
     fn drop(&mut self) {
-        (self.meta().drop)(&self.data);
+        (self.meta.drop)(&self.data);
     }
+}
+
+union Transmuter<F: Copy, T: Copy> {
+    from: F,
+    to: T,
 }
 
 pub unsafe trait VirtualAllocRef: Send + Sync + 'static {
@@ -99,17 +98,14 @@ pub unsafe trait VirtualAllocRef: Send + Sync + 'static {
         ptr::drop_in_place(self);
     }
 
-    #[doc(hidden)]
-    fn meta() -> AllocatorMeta {
-        unsafe {
-            AllocatorMeta {
-                alloc: mem::transmute(Self::alloc as usize),
-                dealloc: mem::transmute(Self::dealloc as usize),
-                clone: mem::transmute(Self::clone_untyped as usize),
-                drop: mem::transmute(Self::drop_in_place as usize),
-            }
+    const VTABLE: &'static AllocatorMeta = &unsafe {
+        AllocatorMeta {
+            alloc: Transmuter{from: Self::alloc as unsafe fn(_, _) -> _}.to,
+            dealloc: Transmuter{from: Self::dealloc as unsafe fn(_, _, _) }.to,
+            clone: Transmuter{from: Self::clone_untyped as fn(_) -> _}.to,
+            drop: Transmuter{from: Self::drop_in_place as unsafe fn(_)}.to,
         }
-    }
+    };
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

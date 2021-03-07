@@ -1,3 +1,5 @@
+// if you thought the `barrier` and `deferred` modules were cursed, hoo boy are you in for a surprise
+
 use core::{
     fmt,
     mem::{self, MaybeUninit},

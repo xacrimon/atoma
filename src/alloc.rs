@@ -102,10 +102,22 @@ pub unsafe trait VirtualAllocRef: Send + Sync + 'static {
 
     const VTABLE: &'static AllocatorMeta = &unsafe {
         AllocatorMeta {
-            alloc: Transmuter{from: Self::alloc as unsafe fn(_, _) -> _}.to,
-            dealloc: Transmuter{from: Self::dealloc as unsafe fn(_, _, _) }.to,
-            clone: Transmuter{from: Self::clone_untyped as fn(_) -> _}.to,
-            drop: Transmuter{from: Self::drop_in_place as unsafe fn(_)}.to,
+            alloc: Transmuter {
+                from: Self::alloc as unsafe fn(_, _) -> _,
+            }
+            .to,
+            dealloc: Transmuter {
+                from: Self::dealloc as unsafe fn(_, _, _),
+            }
+            .to,
+            clone: Transmuter {
+                from: Self::clone_untyped as fn(_) -> _,
+            }
+            .to,
+            drop: Transmuter {
+                from: Self::drop_in_place as unsafe fn(_),
+            }
+            .to,
         }
     };
 }

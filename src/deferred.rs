@@ -5,7 +5,7 @@ use core::{
     ptr,
 };
 
-const DATA_SIZE: usize = mem::size_of::<Box<usize>>();
+const DATA_SIZE: usize = 3;
 type Data = [usize; DATA_SIZE];
 
 // note to a future reader

@@ -20,7 +20,8 @@ use crate::tls2::std_tls_provider;
 #[cfg(feature = "std")]
 use crate::alloc::GlobalAllocator;
 
-const ADVANCE_PROBABILITY: usize = 128;
+const MAX_GARBAGE_BYTES: usize = 1024 * 1024;
+const ADVANCE_PROBABILITY: usize = 256;
 
 /// The `Collector` acts like the central bookkeeper, it stores all the retired functions that are queued
 /// for execution along with information on what each participant is doing, Participants are pretty much always
@@ -44,7 +45,10 @@ impl Collector {
         tls_provider: &'static dyn TlsProvider,
     ) -> Self {
         Self {
-            global: Arc::new(Global::new(allocator.clone(), tls_provider), allocator),
+            global: Arc::new(
+                Global::new(allocator.clone(), tls_provider, MAX_GARBAGE_BYTES),
+                allocator,
+            ),
         }
     }
 
@@ -63,9 +67,8 @@ impl Collector {
     }
 
     /// Attempt to advance the epoch and collect garbage.
-    /// The result represents whether or not the attempt to advance the global epoch
-    /// was successful and if it was the integer is how many retired functions were executed.
-    pub fn try_collect_light(&self) -> Result<usize, ()> {
+    /// Returns true if the epoch was cycled and garbage collected.
+    pub fn try_collect_light(&self) -> bool {
         Global::try_collect_light(&self.global)
     }
 }

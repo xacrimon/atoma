@@ -36,7 +36,7 @@ impl Epoch {
         Self::from_raw(self.data + 1)
     }
 
-    pub fn have_passed(self, now: Epoch, amount: u64) -> bool {
+    pub fn has_passed(self, now: Epoch, amount: u64) -> bool {
         now.data.saturating_sub(self.data) >= amount
     }
 

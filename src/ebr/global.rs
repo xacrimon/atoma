@@ -7,27 +7,40 @@ use super::{
 };
 use crate::heap::Arc;
 use crate::{
-    alloc::AllocRef, barrier::strong_barrier, queue::Queue, tls2::ThreadLocal, tls2::TlsProvider,
-    CachePadded,
+    alloc::AllocRef, barrier::strong_barrier, deferred::Deferred, queue::Queue, tls2::ThreadLocal,
+    tls2::TlsProvider, CachePadded,
 };
-use core::sync::atomic::{fence, AtomicIsize, Ordering};
+use core::{
+    mem,
+    sync::atomic::{fence, AtomicIsize, Ordering},
+};
+
+fn deferred_ceiling(max_bytes: usize) -> usize {
+    max_bytes / mem::size_of::<Deferred>()
+}
 
 pub(crate) struct Global {
     threads: ThreadLocal<Arc<LocalState>>,
     deferred: Queue<SealedBag>,
     global_epoch: CachePadded<AtomicEpoch>,
     deferred_amount: CachePadded<AtomicIsize>,
+    deferred_amount_ceiling: usize,
     pub(crate) ct: CrossThread,
     pub(crate) allocator: AllocRef,
 }
 
 impl Global {
-    pub(crate) fn new(allocator: AllocRef, tls_provider: &'static dyn TlsProvider) -> Self {
+    pub(crate) fn new(
+        allocator: AllocRef,
+        tls_provider: &'static dyn TlsProvider,
+        max_garbage_bytes: usize,
+    ) -> Self {
         Self {
             threads: ThreadLocal::new(tls_provider, allocator.clone()),
             deferred: Queue::new(allocator.clone()),
             global_epoch: CachePadded::new(AtomicEpoch::new(Epoch::ZERO)),
             deferred_amount: CachePadded::new(AtomicIsize::new(0)),
+            deferred_amount_ceiling: deferred_ceiling(max_garbage_bytes),
             ct: CrossThread::new(),
             allocator,
         }
@@ -67,33 +80,43 @@ impl Global {
         let _epoch = self.global_epoch.load(Ordering::Relaxed);
         let diff = bag.len() as isize;
         self.deferred.push(bag);
-        self.deferred_amount.fetch_add(diff, Ordering::Relaxed);
+        let len = self.deferred_amount.fetch_add(diff, Ordering::Relaxed);
+
+        if len as usize > self.deferred_amount_ceiling {
+            let _ = self.try_cycle();
+        }
     }
 
     pub(crate) fn should_advance(&self) -> bool {
         self.deferred_amount.load(Ordering::Relaxed) > 0
     }
 
-    pub(crate) fn try_collect_light(this: &Arc<Self>) -> Result<usize, ()> {
+    pub(crate) fn try_collect_light(this: &Arc<Self>) -> bool {
         let local_state = Self::local_state(this);
-        this.try_cycle(local_state)
+        let shield = local_state.shield();
+        let cycled = this.try_cycle();
+        drop(shield);
+        cycled
     }
 
-    pub(crate) fn try_cycle(&self, local_state: &LocalState) -> Result<usize, ()> {
+    // Some sort of shield must be held for the duration of this call.
+    pub(crate) fn try_cycle(&self) -> bool {
         if let Ok(epoch) = self.try_advance() {
-            let shield = local_state.thin_shield();
             fence(Ordering::SeqCst);
-            unsafe { Ok(self.internal_collect(epoch, &shield)) }
+            let cleaned = unsafe { self.internal_collect(epoch) };
+            self.deferred_amount
+                .fetch_sub(cleaned as isize, Ordering::Relaxed);
+            true
         } else {
-            Err(())
+            false
         }
     }
 
-    unsafe fn internal_collect(&self, epoch: Epoch, _shield: &ThinShield) -> usize {
+    unsafe fn internal_collect(&self, epoch: Epoch) -> usize {
         let mut executed_amount = 0;
 
         while let Some(sealed) = self.deferred.pop() {
-            if sealed.epoch().have_passed(epoch, 2) {
+            if sealed.epoch().has_passed(epoch, 2) {
                 executed_amount += sealed.run();
             } else {
                 self.deferred.push(sealed);

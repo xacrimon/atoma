@@ -28,6 +28,10 @@ impl LocalState {
         }
     }
 
+    pub(crate) fn shield(&self) -> ThinShield {
+        ThinShield::new(self)
+    }
+
     pub(crate) fn allocator(&self) -> &AllocRef {
         &self.global.allocator
     }
@@ -102,7 +106,7 @@ impl LocalState {
 
         if self.should_advance() {
             *shields += 1;
-            let _ = self.global.try_cycle(self);
+            let _ = self.global.try_cycle();
             *shields -= 1;
         }
     }

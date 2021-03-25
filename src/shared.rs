@@ -1,4 +1,4 @@
-use crate::tag::{read_tag, set_tag, strip, NullTag, Tag, TagPosition};
+use crate::tag::{read_tag, set_tag, strip, Tag, TagPosition};
 use core::fmt::{self, Debug};
 use core::marker::PhantomData;
 use core::ptr;
@@ -9,11 +9,11 @@ use core::ptr;
 /// that can be used to interact with `Atomic` since this type
 /// enforces a lifetime based on the shield used to create it.
 #[repr(transparent)]
-pub struct Shared<'shield, V, T1 = NullTag, T2 = NullTag>
+pub struct Shared<'shield, V, T1, T2, const N1: usize, const N2: usize>
 where
     V: 'shield,
-    T1: Tag,
-    T2: Tag,
+    T1: Tag<N1>,
+    T2: Tag<N2>,
 {
     pub(crate) data: usize,
     _m0: PhantomData<&'shield ()>,
@@ -22,11 +22,11 @@ where
     _m3: PhantomData<T2>,
 }
 
-impl<'shield, V, T1, T2> Shared<'shield, V, T1, T2>
+impl<'shield, V, T1, T2, const N1: usize, const N2: usize> Shared<'shield, V, T1, T2, N1, N2>
 where
     V: 'shield,
-    T1: Tag,
-    T2: Tag,
+    T1: Tag<N1>,
+    T2: Tag<N2>,
 {
     pub fn null() -> Self {
         unsafe { Self::from_raw(ptr::null::<()>() as usize) }
@@ -69,7 +69,7 @@ where
 
     /// Remove all tags by zeroing their bits.
     pub fn strip(self) -> Self {
-        let data = strip::<T1, T2>(self.data);
+        let data = strip::<T1, T2, N1, N2>(self.data);
         unsafe { Self::from_raw(data) }
     }
 
@@ -124,100 +124,107 @@ where
 
     /// Get the tag in the low position.
     pub fn tag_lo(self) -> T1 {
-        let bits = read_tag::<T1>(self.data, TagPosition::Lo);
+        let bits = read_tag::<T1, N1>(self.data, TagPosition::Lo);
         Tag::deserialize(bits)
     }
 
     /// Get the tag in the high position.
     pub fn tag_hi(self) -> T2 {
-        let bits = read_tag::<T2>(self.data, TagPosition::Hi);
+        let bits = read_tag::<T2, N2>(self.data, TagPosition::Hi);
         Tag::deserialize(bits)
     }
 
     /// Set the tag in the low position.
     pub fn with_tag_lo(self, tag: T1) -> Self {
         let bits = tag.serialize();
-        let data = set_tag::<T1>(self.data, bits, TagPosition::Lo);
+        let data = set_tag::<T1, N1>(self.data, bits, TagPosition::Lo);
         unsafe { Self::from_raw(data) }
     }
 
     /// Set the tag in the high position.
     pub fn with_tag_hi(self, tag: T2) -> Self {
         let bits = tag.serialize();
-        let data = set_tag::<T2>(self.data, bits, TagPosition::Hi);
+        let data = set_tag::<T2, N2>(self.data, bits, TagPosition::Hi);
         unsafe { Self::from_raw(data) }
     }
 }
 
-impl<'shield, V, T1, T2> Clone for Shared<'shield, V, T1, T2>
+impl<'shield, V, T1, T2, const N1: usize, const N2: usize> Clone
+    for Shared<'shield, V, T1, T2, N1, N2>
 where
     V: 'shield,
-    T1: Tag,
-    T2: Tag,
+    T1: Tag<N1>,
+    T2: Tag<N2>,
 {
     fn clone(&self) -> Self {
         unsafe { Self::from_raw(self.data) }
     }
 }
 
-impl<'shield, V, T1, T2> Copy for Shared<'shield, V, T1, T2>
+impl<'shield, V, T1, T2, const N1: usize, const N2: usize> Copy
+    for Shared<'shield, V, T1, T2, N1, N2>
 where
     V: 'shield,
-    T1: Tag,
-    T2: Tag,
+    T1: Tag<N1>,
+    T2: Tag<N2>,
 {
 }
 
-impl<'shield, V, T1, T2> PartialEq for Shared<'shield, V, T1, T2>
+impl<'shield, V, T1, T2, const N1: usize, const N2: usize> PartialEq
+    for Shared<'shield, V, T1, T2, N1, N2>
 where
     V: 'shield,
-    T1: Tag,
-    T2: Tag,
+    T1: Tag<N1>,
+    T2: Tag<N2>,
 {
     fn eq(&self, other: &Self) -> bool {
         self.into_raw() == other.into_raw()
     }
 }
 
-impl<'shield, V, T1, T2> Eq for Shared<'shield, V, T1, T2>
+impl<'shield, V, T1, T2, const N1: usize, const N2: usize> Eq for Shared<'shield, V, T1, T2, N1, N2>
 where
     V: 'shield,
-    T1: Tag,
-    T2: Tag,
+    T1: Tag<N1>,
+    T2: Tag<N2>,
 {
 }
 
-impl<'shield, V, T1, T2> Debug for Shared<'shield, V, T1, T2>
+impl<'shield, V, T1, T2, const N1: usize, const N2: usize> Debug
+    for Shared<'shield, V, T1, T2, N1, N2>
 where
     V: 'shield,
-    T1: Tag,
-    T2: Tag,
+    T1: Tag<N1>,
+    T2: Tag<N2>,
 {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "{:?}", self.data)
     }
 }
 
-unsafe impl<'shield, V, T1, T2> Send for Shared<'shield, V, T1, T2>
+unsafe impl<'shield, V, T1, T2, const N1: usize, const N2: usize> Send
+    for Shared<'shield, V, T1, T2, N1, N2>
 where
     V: 'shield,
-    T1: Tag,
-    T2: Tag,
+    T1: Tag<N1>,
+    T2: Tag<N2>,
 {
 }
 
-unsafe impl<'shield, V, T1, T2> Sync for Shared<'shield, V, T1, T2>
+unsafe impl<'shield, V, T1, T2, const N1: usize, const N2: usize> Sync
+    for Shared<'shield, V, T1, T2, N1, N2>
 where
     V: 'shield,
-    T1: Tag,
-    T2: Tag,
+    T1: Tag<N1>,
+    T2: Tag<N2>,
 {
 }
 
-impl<'shield, V, T1, T2> Unpin for Shared<'shield, V, T1, T2>
+impl<'shield, V, T1, T2, const N1: usize, const N2: usize> Unpin
+    for Shared<'shield, V, T1, T2, N1, N2>
 where
     V: 'shield,
-    T1: Tag,
-    T2: Tag,
+    T1: Tag<N1>,
+    T2: Tag<N2>,
 {
 }

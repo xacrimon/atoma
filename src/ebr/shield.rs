@@ -274,12 +274,12 @@ impl fmt::Debug for UnprotectedShield {
 ///
 /// # Examples
 /// ```
-/// use flize::{self, Atomic, Shared, Shield};
+/// use flize::{self, Atomic, Shared, Shield, NullTag};
 /// use std::sync::atomic::Ordering::Relaxed;
 /// use std::mem;
 ///
 /// let a = {
-///     let s: Shared<'_, i32> = unsafe { Shared::from_ptr(Box::into_raw(Box::new(7))) };
+///     let s: Shared<'_, i32, NullTag, NullTag, 0, 0> = unsafe { Shared::from_ptr(Box::into_raw(Box::new(7))) };
 ///     Atomic::new(s)
 /// };
 ///

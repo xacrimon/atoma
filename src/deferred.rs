@@ -21,7 +21,7 @@ type Data = [usize; DATA_SIZE];
 /// Should it exceed some amount of words it will act as a boxed closure.
 pub struct Deferred {
     call: unsafe fn(*mut u8),
-    data: Data,
+    data: MaybeUninit<Data>,
     _m0: PhantomData<*mut ()>,
 }
 
@@ -46,7 +46,7 @@ impl Deferred {
 
                 Self {
                     call: call::<F>,
-                    data: data.assume_init(),
+                    data,
                     _m0: PhantomData,
                 }
             } else {
@@ -66,7 +66,7 @@ impl Deferred {
 
                 Self {
                     call: call::<F>,
-                    data: data.assume_init(),
+                    data: data,
                     _m0: PhantomData,
                 }
             }
@@ -78,13 +78,13 @@ impl Deferred {
 
         Self {
             call,
-            data: [0; DATA_SIZE],
+            data: MaybeUninit::uninit(),
             _m0: PhantomData,
         }
     }
 
     pub fn call(mut self) {
-        unsafe { (self.call)(&mut self.data as *mut Data as *mut u8) }
+        unsafe { (self.call)(self.data.as_mut_ptr() as *mut u8) }
     }
 }
 

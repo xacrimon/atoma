@@ -66,7 +66,7 @@ impl Deferred {
 
                 Self {
                     call: call::<F>,
-                    data: data,
+                    data,
                     _m0: PhantomData,
                 }
             }

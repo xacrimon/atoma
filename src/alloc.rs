@@ -90,7 +90,14 @@ union Transmuter<F: Copy, T: Copy> {
 }
 
 pub unsafe trait VirtualAllocRef: Send + Sync + 'static {
+    /// # Safety
+    ///
+    /// The returned pointer must match the layout described.
     unsafe fn alloc(&self, layout: &Layout) -> *mut u8;
+
+    /// # Safety
+    ///
+    /// The layout must match the object at the pointer and the pointer must have been allocated through `alloc`.
     unsafe fn dealloc(&self, layout: &Layout, ptr: *mut u8);
     fn clone_untyped(&self) -> AllocRef;
 
@@ -134,6 +141,10 @@ impl Layout {
         unsafe { Self::from_size_align_unchecked(size, align) }
     }
 
+    /// # Safety
+    ///
+    /// Size and align must match the type the layout is intended for.
+    /// Align must be a power of two.
     pub unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Self {
         Self {
             size_: size,

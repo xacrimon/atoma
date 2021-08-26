@@ -46,17 +46,17 @@ impl Global {
         }
     }
 
-    pub(crate) fn local_state<'a>(this: &'a Arc<Self>) -> &'a Arc<LocalState> {
+    pub(crate) fn local_state(this: &Arc<Self>) -> &Arc<LocalState> {
         this.threads
             .get(|| Arc::new(LocalState::new(Arc::clone(this)), this.allocator.clone()))
     }
 
-    pub(crate) fn thin_shield<'a>(this: &'a Arc<Self>) -> ThinShield<'a> {
+    pub(crate) fn thin_shield(this: &Arc<Self>) -> ThinShield<'_> {
         let local_state = Self::local_state(this);
         local_state.thin_shield()
     }
 
-    pub(crate) fn full_shield<'a>(this: &'a Arc<Self>) -> FullShield<'a> {
+    pub(crate) fn full_shield(this: &Arc<Self>) -> FullShield<'_> {
         unsafe {
             this.ct.enter(this);
         }

@@ -63,7 +63,10 @@ where
     #[cfg(feature = "std")]
     /// This constructs a `Vec<Atomic>` with null values in an optimized manner.
     pub fn null_vec(len: usize) -> Vec<Self> {
-        unsafe { std::mem::transmute(vec![0_usize; len]) }
+        #[allow(clippy::unsound_collection_transmute)]
+        unsafe {
+            std::mem::transmute(vec![0_usize; len])
+        }
     }
 
     /// Load a the tagged pointer.

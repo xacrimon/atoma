@@ -3,11 +3,11 @@ use super::epoch::{AtomicEpoch, Epoch};
 use super::global::Global;
 use crate::barrier::light_barrier;
 use crate::deferred::Deferred;
+use crate::heap::Arc;
 use crate::mutex::Mutex;
 use crate::CachePadded;
 use core::mem;
 use core::sync::atomic::{fence, AtomicIsize, Ordering};
-use std::sync::Arc;
 
 pub struct CrossThread {
     epoch: CachePadded<AtomicEpoch>,
@@ -59,7 +59,9 @@ impl CrossThread {
     unsafe fn finalize(&self, global: &Arc<Global>) {
         if self.should_advance(global) {
             let local_state = Global::local_state(global);
-            let _ = global.try_cycle(local_state);
+            let shield = local_state.shield();
+            global.try_cycle();
+            drop(shield);
         }
     }
 

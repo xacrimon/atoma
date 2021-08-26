@@ -5,9 +5,9 @@ use super::{
     shield::{Shield, ThinShield},
     ADVANCE_PROBABILITY,
 };
-use crate::{barrier::light_barrier, deferred::Deferred, CachePadded};
+use crate::heap::Arc;
+use crate::{alloc::AllocRef, barrier::light_barrier, deferred::Deferred, CachePadded};
 use core::{cell::UnsafeCell, fmt, marker::PhantomData, mem, sync::atomic::Ordering};
-use std::sync::Arc;
 
 pub(crate) struct LocalState {
     global: Arc<Global>,
@@ -26,6 +26,14 @@ impl LocalState {
             advance_counter: UnsafeCell::new(0),
             bag: UnsafeCell::new(Bag::new()),
         }
+    }
+
+    pub(crate) fn shield(&self) -> ThinShield {
+        ThinShield::new(self)
+    }
+
+    pub(crate) fn allocator(&self) -> &AllocRef {
+        &self.global.allocator
     }
 
     /// This function loads the epoch without any ordering constraints.
@@ -98,7 +106,7 @@ impl LocalState {
 
         if self.should_advance() {
             *shields += 1;
-            let _ = self.global.try_cycle(self);
+            let _ = self.global.try_cycle();
             *shields -= 1;
         }
     }

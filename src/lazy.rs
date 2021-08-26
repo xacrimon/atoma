@@ -19,7 +19,14 @@ fn relaxed_set_init(state: &AtomicU8) {
 
 fn lock_try_acquire(state: &AtomicU8) -> bool {
     fence(Ordering::Acquire);
-    state.compare_and_swap(DEFAULT_STATE, LOCK_MASK, Ordering::Relaxed) == DEFAULT_STATE
+    state
+        .compare_exchange(
+            DEFAULT_STATE,
+            LOCK_MASK,
+            Ordering::Release,
+            Ordering::Relaxed,
+        )
+        .is_ok()
 }
 
 pub struct Lazy<T, F = fn() -> T> {
@@ -71,7 +78,7 @@ where
         let backoff = Backoff::new();
 
         loop {
-            fence(Ordering::Acquire);
+            fence(Ordering::SeqCst);
 
             if relaxed_is_init(&self.state) {
                 break unsafe { self.value_ref() };

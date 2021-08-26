@@ -1,3 +1,4 @@
+use crate::{alloc::AllocRef, heap::Box};
 use core::{
     marker::PhantomData,
     mem::{self, MaybeUninit},
@@ -17,15 +18,15 @@ type Data = [usize; DATA_SIZE];
 /// This type has one primary advantage over simply boxing the closure. When
 /// the closures associated capture data struct is less than 3 words.
 /// the closure is stored fully inline without any sort of allocation.
-/// Should it exceed 3 words it will act as a boxed closure.
+/// Should it exceed some amount of words it will act as a boxed closure.
 pub struct Deferred {
     call: unsafe fn(*mut u8),
-    data: Data,
+    data: MaybeUninit<Data>,
     _m0: PhantomData<*mut ()>,
 }
 
 impl Deferred {
-    pub fn new<F: FnOnce()>(f: F) -> Self {
+    pub fn new<F: FnOnce()>(f: F, allocator: &AllocRef) -> Self {
         let size = mem::size_of::<F>();
         let align = mem::align_of::<F>();
 
@@ -45,12 +46,12 @@ impl Deferred {
 
                 Self {
                     call: call::<F>,
-                    data: data.assume_init(),
+                    data,
                     _m0: PhantomData,
                 }
             } else {
                 // box it instead
-                let b: Box<F> = Box::new(f);
+                let b: Box<F> = Box::new(f, allocator.clone());
                 let mut data = MaybeUninit::<Data>::uninit();
 
                 // this should be safe but another pair of eyes wouldn't hurt
@@ -59,26 +60,36 @@ impl Deferred {
 
                 unsafe fn call<F: FnOnce()>(raw: *mut u8) {
                     #[allow(clippy::cast_ptr_alignment)]
-                    let b: Box<F> = ptr::read(raw as *mut Box<F>);
-                    (*b)();
+                    let b: F = ptr::read(raw as *mut Box<F>).move_out();
+                    b();
                 }
 
                 Self {
                     call: call::<F>,
-                    data: data.assume_init(),
+                    data,
                     _m0: PhantomData,
                 }
             }
         }
     }
 
+    fn empty() -> Self {
+        unsafe fn call(_: *mut u8) {}
+
+        Self {
+            call,
+            data: MaybeUninit::uninit(),
+            _m0: PhantomData,
+        }
+    }
+
     pub fn call(mut self) {
-        unsafe { (self.call)(&mut self.data as *mut Data as *mut u8) }
+        unsafe { (self.call)(self.data.as_mut_ptr() as *mut u8) }
     }
 }
 
 impl Default for Deferred {
     fn default() -> Self {
-        Self::new(|| ())
+        Self::empty()
     }
 }

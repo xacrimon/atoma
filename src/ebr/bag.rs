@@ -28,15 +28,16 @@ impl Bag {
     }
 
     pub fn try_process(&mut self, current_epoch: Epoch) {
-        while !self.deferred.is_empty() {
-            let bottom_epoch = unsafe { self.deferred.get_unchecked(0).1 };
+        let collect_until = self
+            .deferred
+            .iter()
+            .filter(|(_, epoch)| epoch.has_passed(current_epoch, 1))
+            .fuse()
+            .count();
 
-            if bottom_epoch.two_passed(current_epoch) {
-                self.deferred.remove(0).0.call();
-            } else {
-                break;
-            }
-        }
+        self.deferred
+            .drain(..collect_until)
+            .for_each(|(deferred, _)| deferred.call());
     }
 
     fn last_epoch(&self) -> Epoch {

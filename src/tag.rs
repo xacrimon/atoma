@@ -1,8 +1,4 @@
 use core::mem;
-use generic_array::{
-    typenum::{UTerm, Unsigned},
-    ArrayLength, GenericArray,
-};
 
 pub enum TagPosition {
     Lo,
@@ -11,7 +7,7 @@ pub enum TagPosition {
 
 impl TagPosition {
     /// Calculates the start bit offset of the tag depending on the position and type.
-    fn to_skip<T: Tag>(&self) -> usize {
+    fn to_skip<T: Tag<N>, const N: usize>(&self) -> usize {
         match self {
             // low tags always start at 0
             TagPosition::Lo => 0,
@@ -19,28 +15,28 @@ impl TagPosition {
             // high tags occupy the highest bits so the start offset is the max index minus the size
             TagPosition::Hi => {
                 let usize_bits = mem::size_of::<usize>() * 8;
-                usize_bits - <T::Size as Unsigned>::to_usize()
+                usize_bits - N
             }
         }
     }
 }
 
 /// Zeroes all the tag bits.
-pub fn strip<T1: Tag, T2: Tag>(data: usize) -> usize {
+pub fn strip<T1: Tag<N1>, T2: Tag<N2>, const N1: usize, const N2: usize>(data: usize) -> usize {
     // mask for zeroing the low tag
-    let mask1: usize = core::usize::MAX >> <T1::Size as Unsigned>::to_usize();
+    let mask1: usize = core::usize::MAX >> N1;
 
     // mask for zeroing the high tag
-    let mask2: usize = core::usize::MAX << <T2::Size as Unsigned>::to_usize();
+    let mask2: usize = core::usize::MAX << N2;
 
     // apply the masks with an AND to zero the bits
     data & mask1 & mask2
 }
 
 /// Read the bits of a tag a a certain position.
-pub fn read_tag<T: Tag>(data: usize, position: TagPosition) -> GenericArray<bool, T::Size> {
-    let to_skip = position.to_skip::<T>();
-    let mut array = GenericArray::default();
+pub fn read_tag<T: Tag<N>, const N: usize>(data: usize, position: TagPosition) -> [bool; N] {
+    let to_skip = position.to_skip::<T, N>();
+    let mut array = [false; N];
 
     array
         .iter_mut()
@@ -52,12 +48,12 @@ pub fn read_tag<T: Tag>(data: usize, position: TagPosition) -> GenericArray<bool
 }
 
 /// Set the bits of a tag at a certain position.
-pub fn set_tag<T: Tag>(
+pub fn set_tag<T: Tag<N>, const N: usize>(
     mut data: usize,
-    bits: GenericArray<bool, T::Size>,
+    bits: [bool; N],
     position: TagPosition,
 ) -> usize {
-    let to_skip = position.to_skip::<T>();
+    let to_skip = position.to_skip::<T, N>();
 
     bits.iter()
         .enumerate()
@@ -88,15 +84,12 @@ pub fn set_tag<T: Tag>(
 /// available bits. With pointer authentication you can only reasonably assume you have 0 available
 /// bits unless you know otherwise for your compiler. On all other architectures assume you have
 /// 0 available bits unless you know otherwise.
-pub trait Tag: Copy {
-    /// The size in bits of the tag.
-    type Size: ArrayLength<bool>;
-
+pub trait Tag<const N: usize>: Copy {
     /// Deserialize an array of bits into the tag.
-    fn deserialize(bits: GenericArray<bool, Self::Size>) -> Self;
+    fn deserialize(bits: [bool; N]) -> Self;
 
     /// Serialize the tag to an array of bits.
-    fn serialize(self) -> GenericArray<bool, Self::Size>;
+    fn serialize(self) -> [bool; N];
 }
 
 /// This tag is a placeholder type that has a size of 0 and stores no state.
@@ -104,14 +97,12 @@ pub trait Tag: Copy {
 #[derive(Debug, Clone, Copy)]
 pub struct NullTag;
 
-impl Tag for NullTag {
-    type Size = UTerm;
-
-    fn deserialize(_bits: GenericArray<bool, Self::Size>) -> Self {
+impl Tag<0> for NullTag {
+    fn deserialize(_bits: [bool; 0]) -> Self {
         Self
     }
 
-    fn serialize(self) -> GenericArray<bool, Self::Size> {
-        GenericArray::default()
+    fn serialize(self) -> [bool; 0] {
+        []
     }
 }

@@ -1,8 +1,8 @@
 [package]
-name = "recl-test"
+name = "no-std-test"
 version = "0.1.0"
 authors = ["Acrimon <joel.wejdenstal@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-flize = { path = ".." }
+flize = { path = "..", default-features = false }

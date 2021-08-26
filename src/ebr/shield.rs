@@ -1,9 +1,9 @@
 use super::global::Global;
 use super::local::LocalState;
 use crate::deferred::Deferred;
+use crate::heap::Arc;
 use core::fmt;
 use core::marker::PhantomData;
-use std::sync::Arc;
 
 /// Universal methods for any shield implementation.
 pub trait Shield<'a>: Clone + fmt::Debug {
@@ -96,7 +96,7 @@ impl<'a> Shield<'a> for FullShield<'a> {
         F: FnOnce() + 'a,
     {
         let epoch = self.global.load_epoch_relaxed();
-        let deferred = Deferred::new(f);
+        let deferred = Deferred::new(f, &self.global.allocator);
 
         if let Some(sealed) = self.global.ct.retire(deferred, epoch) {
             self.global.retire_bag(sealed, self);
@@ -179,7 +179,7 @@ impl<'a> Shield<'a> for ThinShield<'a> {
     where
         F: FnOnce() + 'a,
     {
-        let deferred = Deferred::new(f);
+        let deferred = Deferred::new(f, self.local_state.allocator());
         self.local_state.retire(deferred, self);
     }
 
@@ -274,12 +274,12 @@ impl fmt::Debug for UnprotectedShield {
 ///
 /// # Examples
 /// ```
-/// use flize::{self, Atomic, Shared, Shield};
+/// use flize::{self, Atomic, Shared, Shield, NullTag};
 /// use std::sync::atomic::Ordering::Relaxed;
 /// use std::mem;
 ///
 /// let a = {
-///     let s: Shared<'_, i32> = unsafe { Shared::from_ptr(Box::into_raw(Box::new(7))) };
+///     let s: Shared<'_, i32, NullTag, NullTag, 0, 0> = unsafe { Shared::from_ptr(Box::into_raw(Box::new(7))) };
 ///     Atomic::new(s)
 /// };
 ///

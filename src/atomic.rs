@@ -1,8 +1,7 @@
-use crate::{NullTag, Shared, Shield, Tag};
+use crate::{Shared, Shield, Tag};
 use core::{
     fmt,
     marker::PhantomData,
-    mem,
     sync::atomic::{AtomicUsize, Ordering},
 };
 
@@ -18,10 +17,10 @@ where
 /// This struct provides methods for manipulating the atomic pointer via
 /// standard atomic operations using `Shared` as the corresponding non atomic version.
 #[repr(transparent)]
-pub struct Atomic<V, T1 = NullTag, T2 = NullTag>
+pub struct Atomic<V, T1, T2, const N1: usize, const N2: usize>
 where
-    T1: Tag,
-    T2: Tag,
+    T1: Tag<N1>,
+    T2: Tag<N2>,
 {
     pub(crate) data: AtomicUsize,
     _m0: PhantomData<V>,
@@ -29,10 +28,10 @@ where
     _m2: PhantomData<T2>,
 }
 
-impl<V, T1, T2> Atomic<V, T1, T2>
+impl<V, T1, T2, const N1: usize, const N2: usize> Atomic<V, T1, T2, N1, N2>
 where
-    T1: Tag,
-    T2: Tag,
+    T1: Tag<N1>,
+    T2: Tag<N2>,
 {
     /// Constructs an `Atomic` from a raw tagged pointer represented as an integer.
     ///
@@ -52,7 +51,7 @@ where
     ///
     /// # Safety
     /// The alignment of `V` must free up sufficient low bits so that `T` fits.
-    pub fn new(shared: Shared<'_, V, T1, T2>) -> Self {
+    pub fn new(shared: Shared<'_, V, T1, T2, N1, N2>) -> Self {
         unsafe { Self::from_raw(shared.into_raw()) }
     }
 
@@ -61,9 +60,13 @@ where
         unsafe { Self::from_raw(0) }
     }
 
+    #[cfg(feature = "std")]
     /// This constructs a `Vec<Atomic>` with null values in an optimized manner.
     pub fn null_vec(len: usize) -> Vec<Self> {
-        unsafe { mem::transmute(vec![0_usize; len]) }
+        #[allow(clippy::unsound_collection_transmute)]
+        unsafe {
+            std::mem::transmute(vec![0_usize; len])
+        }
     }
 
     /// Load a the tagged pointer.
@@ -71,7 +74,7 @@ where
         &self,
         ordering: Ordering,
         _shield: &'shield S,
-    ) -> Shared<'shield, V, T1, T2>
+    ) -> Shared<'shield, V, T1, T2, N1, N2>
     where
         S: Shield<'collector>,
     {
@@ -80,7 +83,7 @@ where
     }
 
     /// Store a tagged pointer, replacing the previous value.
-    pub fn store(&self, data: Shared<'_, V, T1, T2>, ordering: Ordering) {
+    pub fn store(&self, data: Shared<'_, V, T1, T2, N1, N2>, ordering: Ordering) {
         let raw = data.into_raw();
         self.data.store(raw, ordering);
     }
@@ -88,10 +91,10 @@ where
     /// Swap the stored tagged pointer, returning the old one.
     pub fn swap<'collector, 'shield, S>(
         &self,
-        new: Shared<'_, V, T1, T2>,
+        new: Shared<'_, V, T1, T2, N1, N2>,
         ordering: Ordering,
         _shield: &'shield S,
-    ) -> Shared<'shield, V, T1, T2>
+    ) -> Shared<'shield, V, T1, T2, N1, N2>
     where
         S: Shield<'collector>,
     {
@@ -100,34 +103,17 @@ where
         unsafe { Shared::from_raw(old_raw) }
     }
 
-    /// Conditionally swap the stored tagged pointer, always returns the previous value.
-    pub fn compare_and_swap<'collector, 'shield, S>(
-        &self,
-        current: Shared<'_, V, T1, T2>,
-        new: Shared<'_, V, T1, T2>,
-        order: Ordering,
-        _shield: &'shield S,
-    ) -> Shared<'shield, V, T1, T2>
-    where
-        S: Shield<'collector>,
-    {
-        let current_raw = current.into_raw();
-        let new_raw = new.into_raw();
-        let old_raw = self.data.compare_and_swap(current_raw, new_raw, order);
-        unsafe { Shared::from_raw(old_raw) }
-    }
-
     /// Conditionally exchange the stored tagged pointer, always returns
     /// the previous value and a result indicating if it was written or not.
     /// On success this value is guaranteed to be equal to current.
     pub fn compare_exchange<'collector, 'shield, S>(
         &self,
-        current: Shared<'_, V, T1, T2>,
-        new: Shared<'_, V, T1, T2>,
+        current: Shared<'_, V, T1, T2, N1, N2>,
+        new: Shared<'_, V, T1, T2, N1, N2>,
         success: Ordering,
         failure: Ordering,
         _shield: &'shield S,
-    ) -> Result<Shared<'shield, V, T1, T2>, Shared<'shield, V, T1, T2>>
+    ) -> Result<Shared<'shield, V, T1, T2, N1, N2>, Shared<'shield, V, T1, T2, N1, N2>>
     where
         S: Shield<'collector>,
     {
@@ -148,12 +134,12 @@ where
     /// This allows more efficient code generation on those platforms.
     pub fn compare_exchange_weak<'collector, 'shield, S>(
         &self,
-        current: Shared<'_, V, T1, T2>,
-        new: Shared<'_, V, T1, T2>,
+        current: Shared<'_, V, T1, T2, N1, N2>,
+        new: Shared<'_, V, T1, T2, N1, N2>,
         success: Ordering,
         failure: Ordering,
         _shield: &'shield S,
-    ) -> Result<Shared<'shield, V, T1, T2>, Shared<'shield, V, T1, T2>>
+    ) -> Result<Shared<'shield, V, T1, T2, N1, N2>, Shared<'shield, V, T1, T2, N1, N2>>
     where
         S: Shield<'collector>,
     {
@@ -167,37 +153,37 @@ where
     }
 }
 
-unsafe impl<V, T1, T2> Send for Atomic<V, T1, T2>
+unsafe impl<'shield, V, T1, T2, const N1: usize, const N2: usize> Send for Atomic<V, T1, T2, N1, N2>
 where
-    T1: Tag,
-    T2: Tag,
+    T1: Tag<N1>,
+    T2: Tag<N2>,
 {
 }
 
-unsafe impl<V, T1, T2> Sync for Atomic<V, T1, T2>
+unsafe impl<'shield, V, T1, T2, const N1: usize, const N2: usize> Sync for Atomic<V, T1, T2, N1, N2>
 where
-    T1: Tag,
-    T2: Tag,
+    T1: Tag<N1>,
+    T2: Tag<N2>,
 {
 }
 
-impl<V, T1, T2> Unpin for Atomic<V, T1, T2>
+impl<'shield, V, T1, T2, const N1: usize, const N2: usize> Unpin for Atomic<V, T1, T2, N1, N2>
 where
-    T1: Tag,
-    T2: Tag,
+    T1: Tag<N1>,
+    T2: Tag<N2>,
 {
 }
 
-impl<V, T1, T2> fmt::Debug for Atomic<V, T1, T2>
+impl<'shield, V, T1, T2, const N1: usize, const N2: usize> fmt::Debug for Atomic<V, T1, T2, N1, N2>
 where
-    T1: Tag,
-    T2: Tag,
+    T1: Tag<N1>,
+    T2: Tag<N2>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use crate::tag;
         let data = self.data.load(Ordering::SeqCst);
-        let lo = tag::read_tag::<T1>(data, tag::TagPosition::Lo);
-        let hi = tag::read_tag::<T2>(data, tag::TagPosition::Hi);
+        let lo = tag::read_tag::<T1, N1>(data, tag::TagPosition::Lo);
+        let hi = tag::read_tag::<T2, N2>(data, tag::TagPosition::Hi);
 
         f.debug_struct("Atomic")
             .field("raw", &data)

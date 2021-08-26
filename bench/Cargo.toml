@@ -4,11 +4,6 @@ version = "0.1.0"
 authors = ["Acrimon <joel.wejdenstal@gmail.com>"]
 edition = "2018"
 
-[profile.bench]
-lto = "fat"
-codegen-units = 1
-incremental = false
-
 [dev-dependencies]
 criterion = "=0.3.3"
 flize = { path = ".." }
@@ -17,10 +12,6 @@ num_cpus = "=1.13.0"
 
 [[bench]]
 name = "pin-flize"
-harness = false
-
-[[bench]]
-name = "pin-full-flize"
 harness = false
 
 [[bench]]

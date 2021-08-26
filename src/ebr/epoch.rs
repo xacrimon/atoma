@@ -36,8 +36,8 @@ impl Epoch {
         Self::from_raw(self.data + 1)
     }
 
-    pub fn two_passed(self, now: Epoch) -> bool {
-        now.data.saturating_sub(self.data) >= 2
+    pub fn has_passed(self, now: Epoch, amount: u64) -> bool {
+        now.data.saturating_sub(self.data) >= amount
     }
 
     fn unique(self) -> u64 {
@@ -48,15 +48,6 @@ impl Epoch {
 impl PartialEq for Epoch {
     fn eq(&self, other: &Self) -> bool {
         self.unique() == other.unique()
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct DefinitiveEpoch(pub u64);
-
-impl From<Epoch> for DefinitiveEpoch {
-    fn from(epoch: Epoch) -> Self {
-        Self(epoch.data)
     }
 }
 
@@ -84,7 +75,9 @@ impl AtomicEpoch {
     pub fn compare_and_set_non_unique(&self, current: Epoch, new: Epoch, order: Ordering) {
         let current_raw = current.into_raw();
         let new_raw = new.into_raw();
-        self.raw.compare_and_swap(current_raw, new_raw, order);
+        let _ = self
+            .raw
+            .compare_exchange(current_raw, new_raw, order, Ordering::Relaxed);
     }
 
     pub fn try_advance(&self, current: Epoch) -> Result<Epoch, ()> {
@@ -94,7 +87,7 @@ impl AtomicEpoch {
 
         let did_advance =
             self.raw
-                .compare_exchange(current_raw, next_raw, Ordering::SeqCst, Ordering::Relaxed);
+                .compare_exchange(current_raw, next_raw, Ordering::AcqRel, Ordering::Relaxed);
 
         if did_advance.is_ok() {
             Ok(next)

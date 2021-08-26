@@ -1,3 +1,5 @@
+#![cfg_attr(not(feature = "std"), no_std)]
+
 //! flize is an implementation of epoch-based lock-free resource reclamation.
 //! The core is based around the paper "Practical lock-freedom" by Keir Fraser
 //! although many modifications have been made to adapt the scheme to perform well on
@@ -43,25 +45,26 @@
 //! This accelerated bookkeeping is controlled by the `fast-barrier` Cargo feature.
 //! This flag is enabled by default and disabling it will cause the more general implementation to be compiled on all targets.
 
+pub mod alloc;
 mod atomic;
 mod backoff;
 mod barrier;
 mod cache_padded;
 mod deferred;
 mod ebr;
+mod heap;
 mod lazy;
 mod mutex;
 mod queue;
 mod shared;
 mod tag;
-mod tls2;
+pub mod tls2;
 
 pub use atomic::Atomic;
 pub use backoff::Backoff;
 pub use cache_padded::CachePadded;
 pub use ebr::{
-    unprotected, Collector, CowShield, DefinitiveEpoch, FullShield, Local, Shield, ThinShield,
-    UnprotectedShield,
+    unprotected, Collector, CowShield, FullShield, Local, Shield, ThinShield, UnprotectedShield,
 };
 pub use shared::Shared;
 pub use tag::{NullTag, Tag};

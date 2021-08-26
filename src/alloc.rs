@@ -1,7 +1,6 @@
 // if you thought the `barrier` and `deferred` modules were cursed, hoo boy are you in for a surprise
 
 use core::{
-    fmt,
     mem::{self, MaybeUninit},
     ptr,
 };
@@ -148,16 +147,5 @@ impl Layout {
 
     pub fn align(&self) -> usize {
         self.align_
-    }
-}
-
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct LayoutErr {
-    private: (),
-}
-
-impl fmt::Display for LayoutErr {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("invalid parameters to Layout::from_size_align")
     }
 }

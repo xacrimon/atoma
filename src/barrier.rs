@@ -99,7 +99,10 @@ mod linux {
         }
 
         fn sys_membarrier(cmd: membarrier_cmd) -> libc::c_long {
-            unsafe { libc::syscall(libc::SYS_membarrier, cmd as libc::c_int, 0 as libc::c_int) }
+            unsafe {
+                #[allow(clippy::unnecessary_cast)]
+                libc::syscall(libc::SYS_membarrier, cmd as libc::c_int, 0 as libc::c_int)
+            }
         }
 
         pub fn is_supported() -> bool {

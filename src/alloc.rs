@@ -84,6 +84,7 @@ impl Drop for AllocRef {
     }
 }
 
+#[repr(C)]
 union Transmuter<F: Copy, T: Copy> {
     from: F,
     to: T,

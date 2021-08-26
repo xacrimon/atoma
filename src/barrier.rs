@@ -86,7 +86,7 @@ mod linux {
 
     mod membarrier {
         #[repr(i32)]
-        #[allow(dead_code, non_camel_case_types, clippy::upper-case-acronyms)]
+        #[allow(dead_code, non_camel_case_types, clippy::upper_case_acronyms)]
         enum membarrier_cmd {
             MEMBARRIER_CMD_QUERY = 0,
             MEMBARRIER_CMD_GLOBAL = 1,

@@ -15,7 +15,7 @@ in a concurrent environment and you don't want to pay the price of locking.
 
 [![downloads](https://img.shields.io/crates/d/flize)](https://crates.io/crates/flize)
 
-[![minimum rustc version](https://img.shields.io/badge/rustc-1.36+-orange.svg)](https://crates.io/crates/flize)
+[![minimum rustc version](https://img.shields.io/badge/rustc-1.51+-orange.svg)](https://crates.io/crates/flize)
 
 ## Features
 

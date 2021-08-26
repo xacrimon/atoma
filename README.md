@@ -1,15 +1,10 @@
 # flize
 
-flize implements epoch-based reclamation with less restrictions than `crossbeam-epoch`.
+flize implements fast non-global epoch-based reclamation
 
-A primary goal of this crate so to have a very rusty API and
-to have clear and simple source code.
+flize strives for excellent performance achieved through relentless optimization with a clean and rusty API.
 
-We have an MSRV of 1.36 and increasing it is considered a breaking change.
-
-Furthermore as made evident in the testing benchmarks flize is significantly
-less vulnerable hitting cases of unoptimized behaviour and unacceptable usage of memory than crossbeam-epoch.
-In our testing flize is much more consistent in resource usage than crossbeam-epoch.
+We have an MSRV of 1.51 and increasing it is considered a breaking change.
 
 This crate is useful if you have resources that require destruction
 in a concurrent environment and you don't want to pay the price of locking.
@@ -49,11 +44,11 @@ Due to the nature of this crate it is heavily architecture and OS dependent.
 Because of this we run tests on a number of different architectures using emulation
 and check that the crate builds successfully on Linux, Windows and macOS.
 
-All testing is done on our MSRV toolchain which is Rust 1.36 `stable-2019-07-04`.
+All testing is done on our MSRV toolchain which is Rust 1.51 `stable-2021-03-25`.
 
 ### Test targets
 
-These are targets we build and test on and the OS used for it.
+These are targets we build and test on.
 
 #### Ubuntu 18.04
 

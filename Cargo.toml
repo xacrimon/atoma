@@ -16,32 +16,23 @@ categories = ["concurrency", "algorithms", "data-structures"]
 lto = "fat"
 codegen-units = 1
 
-[features]
-default = ["std", "fast-barrier"]
-std = []
-fast-barrier = ["std", "libc", "winapi", "once_cell"]
-
 [dependencies]
 tinyvec = "1.5.1"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-libc = { version = "0.2.111", optional = true }
+libc = "0.2.111"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-libc = { version = "0.2.111", optional = true }
-once_cell = { version = "1.8.0", optional = true }
+libc = "0.2.111"
+once_cell = "1.8.0"
 
 [target.'cfg(target_os = "windows")'.dependencies]
-winapi = { version = "0.3.9", features = ["processthreadsapi"], optional = true }
+winapi = { version = "0.3.9", features = ["processthreadsapi"] }
 
 [dev-dependencies]
 criterion = "0.3.5"
 crossbeam-epoch = "0.9.5"
 num_cpus = "1.13.0"
-
-[[bench]]
-name = "pin-flize"
-harness = false
 
 [[bench]]
 name = "pin-crossbeam"

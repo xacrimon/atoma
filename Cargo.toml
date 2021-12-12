@@ -1,8 +1,8 @@
 [package]
-name = "flize"
-version = "4.2.3"
+name = "atoma"
+version = "0.1.0"
 authors = ["Acrimon <joel.wejdenstal@gmail.com>"]
-edition = "2018"
+edition = "2021"
 license = "MIT"
 repository = "https://github.com/xacrimon/flize"
 homepage = "https://github.com/xacrimon/flize"
@@ -15,9 +15,6 @@ categories = ["concurrency", "algorithms", "data-structures"]
 [profile.bench]
 lto = "fat"
 codegen-units = 1
-
-[dependencies]
-tinyvec = "1.5.1"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 libc = "0.2.111"

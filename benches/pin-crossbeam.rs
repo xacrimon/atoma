@@ -1,7 +1,7 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use std::thread;
 
-const COUNT: usize = 1 << 24;
+const COUNT: usize = 1 << 23;
 
 fn crossbeam_epoch() {
     let cpus = num_cpus::get();
@@ -21,7 +21,7 @@ fn crossbeam_epoch() {
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
-    c.bench_function("crossbeam-epoch 2^24", |b| b.iter(|| crossbeam_epoch()));
+    c.bench_function("crossbeam-epoch 2^23", |b| b.iter(|| crossbeam_epoch()));
 }
 
 criterion_group!(benches, criterion_benchmark);

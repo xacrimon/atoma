@@ -42,7 +42,7 @@ mod windows {
     }
 
     pub fn light_barrier() {
-        compiler_fence(Ordering::SeqCst);
+        compiler_fence(Ordering::Release);
     }
 }
 
@@ -60,7 +60,7 @@ mod linux {
 
     pub fn light_barrier() {
         match STRATEGY.get() {
-            Strategy::Membarrier => compiler_fence(Ordering::SeqCst),
+            Strategy::Membarrier => compiler_fence(Ordering::Release),
             Strategy::Fallback => fence(Ordering::SeqCst),
         }
     }
@@ -167,38 +167,16 @@ mod macos {
         }
     }
 
-    unsafe fn populate_dummy_page() -> MutexGuard<'static, Ptr> {
-        let mut dummy_ptr = DUMMY_PAGE.lock().unwrap();
-
-        if dummy_ptr.0.is_null() {
-            let new_ptr = libc::mmap(
-                null_mut(),
-                1,
-                libc::PROT_READ,
-                libc::MAP_PRIVATE | libc::MAP_ANONYMOUS,
-                -1,
-                0,
-            );
-
-            assert!(new_ptr != libc::MAP_FAILED);
-            assert!(libc::mlock(new_ptr, 1) >= 0);
-
-            *dummy_ptr = Ptr(new_ptr);
-        }
-
-        dummy_ptr
-    }
-
     pub fn strong_barrier() {
         unsafe {
-            let dummy_page = populate_dummy_page();
+            let dummy_page = DUMMY_PAGE.lock().unwrap();
             assert!(libc::mprotect(dummy_page.0, 1, libc::PROT_READ | libc::PROT_WRITE) >= 0);
             assert!(libc::mprotect(dummy_page.0, 1, libc::PROT_READ) >= 0);
         }
     }
 
     pub fn light_barrier() {
-        compiler_fence(Ordering::SeqCst);
+        compiler_fence(Ordering::Release);
     }
 }
 

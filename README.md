@@ -1,21 +1,21 @@
-# flize
+# atoma
 
-flize implements fast non-global epoch-based reclamation
+atoma implements fast lock-free resource reclamation.
 
-flize strives for excellent performance achieved through relentless optimization with a clean and rusty API.
+atoma strives for excellent performance achieved through relentless optimization with a clean and rusty API.
 
-We have an MSRV of 1.51 and increasing it is considered a breaking change.
+We have an MSRV of 1.56 and increasing it is considered a breaking change.
 
 This crate is useful if you have resources that require destruction
 in a concurrent environment and you don't want to pay the price of locking.
 
-[![version](https://img.shields.io/crates/v/flize)](https://crates.io/crates/flize)
+[![version](https://img.shields.io/crates/v/atoma)](https://crates.io/crates/atoma)
 
-[![documentation](https://docs.rs/flize/badge.svg)](https://docs.rs/flize)
+[![documentation](https://docs.rs/atoma/badge.svg)](https://docs.rs/atoma)
 
-[![downloads](https://img.shields.io/crates/d/flize)](https://crates.io/crates/flize)
+[![downloads](https://img.shields.io/crates/d/atoma)](https://crates.io/crates/atoma)
 
-[![minimum rustc version](https://img.shields.io/badge/rustc-1.51+-orange.svg)](https://crates.io/crates/flize)
+[![minimum rustc version](https://img.shields.io/badge/rustc-1.56+-orange.svg)](https://crates.io/crates/atoma)
 
 ## Testing
 

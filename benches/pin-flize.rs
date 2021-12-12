@@ -1,7 +1,7 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use std::{sync::Arc, thread};
 
-const COUNT: usize = 1 << 23;
+const COUNT: usize = 1 << 24;
 
 fn flize() {
     let cpus = num_cpus::get();
@@ -26,7 +26,7 @@ fn flize() {
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
-    c.bench_function("flize 2^23", |b| b.iter(|| flize()));
+    c.bench_function("flize 2^24", |b| b.iter(|| flize()));
 }
 
 criterion_group!(benches, criterion_benchmark);
